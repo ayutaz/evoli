@@ -72,12 +72,11 @@ fn main() -> amethyst::Result<()> {
             "",
             &[],
         )
-        .with(
-            DjSystem::new(|music: &mut Music| music.music.next()),
-            "dj",
-            &[],
-        )
-        .with_bundle(AudioBundle::default())?
+        //.with(
+        //    DjSystem::new(|music: &mut Music| music.music.next()),
+        //    "dj",
+        //    &[],
+        //)
         .with_bundle(UiBundle::<StringBindings>::new())?
         .with_bundle(
             RenderingBundle::<DefaultBackend>::new()

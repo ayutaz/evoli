@@ -15,7 +15,7 @@ thread_profiler = "0.3.0"
 # MacOS needs the metal feature while other platforms use vulkan.
 [dependencies.amethyst]
 version = "0.15.0"
-features = ["vulkan", "gltf"]
+features = ["metal", "gltf"]
 
 [features]
 profiler = [

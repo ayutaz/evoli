@@ -45,7 +45,12 @@ impl SimpleState for LoadingState {
     fn on_start(&mut self, mut data: StateData<GameData>) {
         load_factions(data.world);
         self.prefab_loading_progress = Some(initialize_prefabs(&mut data.world));
-        initialise_audio(data.world);
+        // オーディオ初期化 — macOS 26.0+のCoreAudio非互換によりpanicする場合がある
+        if std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            initialise_audio(data.world);
+        })).is_err() {
+            warn!("Audio initialization failed, continuing without audio");
+        }
         data.world.insert(DebugLinesParams { line_width: 1.0 });
 
         data.world.insert(DebugLines::new());
