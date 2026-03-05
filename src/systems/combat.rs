@@ -22,7 +22,7 @@ impl<'s> System<'s> for CooldownSystem {
     fn run(&mut self, (mut cooldowns, entities, time): Self::SystemData) {
         let mut to_remove = Vec::new();
 
-        for (mut cooldown, entity) in (&mut cooldowns, &*entities).join() {
+        for (cooldown, entity) in (&mut cooldowns, &*entities).join() {
             match cooldown.time_left.checked_sub(time.delta_time()) {
                 Some(time_left) => {
                     cooldown.time_left = time_left;
@@ -89,7 +89,7 @@ impl<'s> System<'s> for PerformDefaultAttackSystem {
             let mut cooldown = None;
 
             for (damage, _, speed, _) in (&damages, !&cooldowns, &speeds, &attack_set).join() {
-                for (mut health, _) in (&mut healths, &defender_set).join() {
+                for (health, _) in (&mut healths, &defender_set).join() {
                     health.value = health.value - damage.damage;
                     cooldown = Some(Cooldown::new(Duration::from_millis(
                         (1000.0 / speed.attacks_per_second) as u64,
@@ -97,7 +97,7 @@ impl<'s> System<'s> for PerformDefaultAttackSystem {
                 }
             }
 
-            for (mut fullness, _, damage) in (&mut fullnesses, &attack_set, &damages).join() {
+            for (fullness, _, damage) in (&mut fullnesses, &attack_set, &damages).join() {
                 for (nutrition, _) in (&mut nutritions, &defender_set).join() {
                     let delta = nutrition.value.min(damage.damage);
                     nutrition.value = nutrition.value - delta;

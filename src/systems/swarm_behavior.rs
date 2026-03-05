@@ -107,7 +107,7 @@ impl<'s> System<'s> for SwarmCenterSystem {
     );
 
     fn run(&mut self, (entities, _time, mut swarm_centers, swarm_behaviors): Self::SystemData) {
-        for (entity, mut swarm_center) in (&entities, &mut swarm_centers).join() {
+        for (entity, swarm_center) in (&entities, &mut swarm_centers).join() {
             swarm_center.entities = swarm_center
                 .entities
                 .iter()
@@ -148,7 +148,7 @@ impl<'s> System<'s> for SwarmBehaviorSystem {
         }
         let time_step = 0.01;
         let iterations = (delta_seconds / time_step) as u32 + 1;
-        for (transform, swarm_behavior, mut movement) in
+        for (transform, swarm_behavior, movement) in
             (&transforms, &swarm_behaviors, &mut movements).join()
         {
             let original_position = transform.translation();

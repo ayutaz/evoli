@@ -6,7 +6,7 @@ use amethyst::{
     input::InputEvent,
     prelude::*,
     renderer::{
-        camera::{Camera, Projection},
+        camera::Camera,
         debug_drawing::DebugLinesComponent,
         light::{DirectionalLight, Light},
         palette::rgb::{Srgb, Srgba},
@@ -431,14 +431,14 @@ impl SimpleState for MainGameState {
             data.world
                 .create_entity()
                 .named("Main camera")
-                .with(Camera::from(Projection::orthographic(
+                .with(Camera::orthographic(
                     -width / zoom_factor,
                     width / zoom_factor,
                     -height / zoom_factor,
                     height / zoom_factor,
                     0.1f32,
                     1000.0f32,
-                )))
+                ))
                 .with(transform)
                 .build(),
         );

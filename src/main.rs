@@ -3,7 +3,6 @@ extern crate log;
 
 use amethyst::assets::PrefabLoaderSystemDesc;
 use amethyst::{
-    audio::{AudioBundle, DjSystem},
     core::frame_limiter::FrameRateLimitStrategy,
     core::transform::TransformBundle,
     gltf::GltfSceneLoaderSystemDesc,
@@ -26,7 +25,7 @@ mod systems;
 mod utils;
 
 use crate::components::{combat, creatures};
-use crate::resources::audio::Music;
+
 use crate::states::loading::LoadingState;
 
 fn main() -> amethyst::Result<()> {

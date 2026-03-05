@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## プロジェクト概要
 
-Evoli は Amethyst エンジン (v0.15) を使ったマイクロエコシステムシミュレーションゲーム (Rust)。複数の生物種が限られた空間内で共存するシミュレーションを行う。**現在はメンテナンスされていない。**
+Evoli は Amethyst エンジン (v0.15.3) を使ったマイクロエコシステムシミュレーションゲーム (Rust)。複数の生物種が限られた空間内で共存するシミュレーションを行う。**現在はメンテナンスされていない。**
 
 ## ビルド・実行コマンド
 

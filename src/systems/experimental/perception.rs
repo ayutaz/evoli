@@ -36,7 +36,7 @@ impl<'s> System<'s> for EntityDetectionSystem {
             }
         }
 
-        for (perception, mut detected, transform) in
+        for (perception, detected, transform) in
             (&perceptions, &mut detected_entities, &transforms).join()
         {
             detected.entities = BitSet::new();
