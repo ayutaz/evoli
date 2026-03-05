@@ -1,19 +1,21 @@
-#![enable(implicit_some)]
-Prefab (
-    entities: [
-        (
-            data: (
-                name: (
-                    name: "Topplegrass"
-                ),
-                gltf: File("assets/topplegrass.gltf", ()),
-                movement: (
-                    velocity: [0.0, 0.0, 0.0],
-                    max_movement_speed: 10.0,
-                ),
-                despawn_when_out_of_bounds_tag: (),
-                topplegrass_tag: (),
-            ),
-        ),
-    ],
+(
+    name: "Topplegrass",
+    gltf: Some("assets/topplegrass.gltf"),
+    creature_tag: false,
+    movement: Some((
+        velocity: (0.0, 0.0, 0.0),
+        max_movement_speed: 10.0,
+    )),
+    wander: None,
+    collider: None,
+    combat: None,
+    digestion: None,
+    intelligence_tag: false,
+    perception: None,
+    ricochet_tag: false,
+    avoid_obstacles_tag: false,
+    carcass: None,
+    despawn_when_out_of_bounds_tag: true,
+    topplegrass_tag: true,
+    falling_tag: false,
 )

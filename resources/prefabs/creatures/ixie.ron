@@ -1,32 +1,37 @@
-#![enable(implicit_some)]
-Prefab (
-    entities: [
-        (
-            data: (
-                name: (
-                    name: "Ixie"
-                ),
-                creature_tag: (),
-                gltf: File("assets/ixie.glb", ()),
-                digestion: (
-                    digestion: (
-                        nutrition_burn_rate: 0.1,
-                    ),
-                    fullness: (
-                        max: 10.0,
-                        value: 10.0,
-                    ),
-                ),
-                combat: (
-                    health: (
-                        max_health: 10.0,
-                        value: 10.0,
-                    ),
-                ),
-                perception: (
-                    range: 2.0,
-                ),
-            ),
-        ),
-    ],
+(
+    name: "Ixie",
+    gltf: Some("assets/ixie.glb"),
+    creature_tag: true,
+    movement: None,
+    wander: None,
+    collider: None,
+    combat: Some((
+        health: Some((
+            max_health: 10.0,
+            value: 10.0,
+        )),
+        speed: None,
+        damage: None,
+        faction: None,
+    )),
+    digestion: Some((
+        fullness: Some((
+            value: 10.0,
+            max: 10.0,
+        )),
+        digestion: Some((
+            nutrition_burn_rate: 0.1,
+        )),
+        nutrition: None,
+    )),
+    intelligence_tag: false,
+    perception: Some((
+        range: 2.0,
+    )),
+    ricochet_tag: false,
+    avoid_obstacles_tag: false,
+    carcass: None,
+    despawn_when_out_of_bounds_tag: false,
+    topplegrass_tag: false,
+    falling_tag: false,
 )

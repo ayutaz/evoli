@@ -1,38 +1,39 @@
-#![enable(implicit_some)]
-Prefab (
-    entities: [
-        (
-            data: (
-                name: (
-                    name: "HerbivoreCarcass"
-                ),
-                creature_tag: (),
-                gltf: File("assets/carcass.glb", ()),
-                collider: (
-                    radius: 0.45,
-                ),
-                digestion: (
-                    digestion: (
-                        nutrition_burn_rate: 5.0,
-                    ),
-                    fullness: (
-                        max: 100.0,
-                        value: 100.0,
-                    ),
-                    nutrition: (
-                        value: 50.0,
-                    ),
-                ),
-                combat: (
-                    health: (
-                        max_health: 50.0,
-                        value: 50.0,
-                    ),
-                    has_faction: (
-                        faction: "Herbivores",
-                    ),
-                ),
-            ),
-        ),
-    ],
+(
+    name: "HerbivoreCarcass",
+    gltf: Some("assets/carcass.glb"),
+    creature_tag: true,
+    movement: None,
+    wander: None,
+    collider: Some((
+        radius: 0.45,
+    )),
+    combat: Some((
+        health: Some((
+            max_health: 50.0,
+            value: 50.0,
+        )),
+        speed: None,
+        damage: None,
+        faction: Some("Herbivores"),
+    )),
+    digestion: Some((
+        fullness: Some((
+            value: 100.0,
+            max: 100.0,
+        )),
+        digestion: Some((
+            nutrition_burn_rate: 5.0,
+        )),
+        nutrition: Some((
+            value: 50.0,
+        )),
+    )),
+    intelligence_tag: false,
+    perception: None,
+    ricochet_tag: false,
+    avoid_obstacles_tag: false,
+    carcass: None,
+    despawn_when_out_of_bounds_tag: false,
+    topplegrass_tag: false,
+    falling_tag: false,
 )

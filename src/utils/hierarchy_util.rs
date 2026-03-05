@@ -1,21 +1,13 @@
-use amethyst::{
-    core::transform::ParentHierarchy,
-    ecs::{error::WrongGeneration, Entity},
-    prelude::*,
-};
-use std::iter;
+// In Bevy 0.15, hierarchy deletion is handled natively by `Commands::entity(e).despawn_recursive()`.
+// This module is kept for backwards compatibility but the function simply wraps Bevy's built-in
+// recursive despawn.
 
-// delete the specified root entity and all of its descendents as specified
-// by the Parent component and maintained by the ParentHierarchy resource
-pub fn delete_hierarchy(root: Entity, world: &mut World) -> Result<(), WrongGeneration> {
-    let entities = {
-        iter::once(root)
-            .chain(
-                world
-                    .read_resource::<ParentHierarchy>()
-                    .all_children_iter(root),
-            )
-            .collect::<Vec<Entity>>()
-    };
-    world.delete_entities(&entities)
+use bevy::prelude::*;
+
+/// Despawn the given entity and all of its descendants.
+///
+/// In Bevy 0.15, this is equivalent to `commands.entity(root).despawn_recursive()`.
+/// This helper is provided for call-site compatibility with the old Amethyst codebase.
+pub fn delete_hierarchy(root: Entity, commands: &mut Commands) {
+    commands.entity(root).despawn_recursive();
 }

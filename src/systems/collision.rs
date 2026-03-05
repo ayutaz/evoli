@@ -1,43 +1,11 @@
-use amethyst::renderer::{debug_drawing::DebugLinesComponent, palette::Srgba};
-use amethyst::shrev::{EventChannel, ReaderId};
-use amethyst::{core::math::Point3, core::Transform, ecs::prelude::*};
-use log::info;
-use std::f32;
-#[cfg(feature = "profiler")]
-use thread_profiler::profile_scope;
+use bevy::prelude::*;
 
 use crate::components::collider;
-use crate::components::creatures;
-use crate::resources::world_bounds::*;
+use crate::components::creatures::{CreatureTag, Movement};
+use crate::resources::world_bounds::WorldBounds;
 
-pub struct EnforceBoundsSystem;
-
-impl<'s> System<'s> for EnforceBoundsSystem {
-    type SystemData = (
-        WriteStorage<'s, Transform>,
-        ReadStorage<'s, creatures::CreatureTag>,
-        ReadExpect<'s, WorldBounds>,
-    );
-
-    fn run(&mut self, (mut locals, tags, bounds): Self::SystemData) {
-        for (local, _) in (&mut locals, &tags).join() {
-            let pos = local.translation().clone();
-            if pos.x > bounds.right {
-                local.translation_mut().x = bounds.right;
-            } else if pos.x < bounds.left {
-                local.translation_mut().x = bounds.left;
-            }
-
-            if pos.y > bounds.top {
-                local.translation_mut().y = bounds.top;
-            } else if pos.y < bounds.bottom {
-                local.translation_mut().y = bounds.bottom;
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
+/// Event emitted when two circle colliders overlap.
+#[derive(Event, Debug, Clone)]
 pub struct CollisionEvent {
     pub entity_a: Entity,
     pub entity_b: Entity,
@@ -49,99 +17,90 @@ impl CollisionEvent {
     }
 }
 
-/// The collision system uses a simple way to calculate collision, at the cost of performance. This is
-/// intended! If there are a lot of entities, collisions should be handled by a real physics engine. As soon
-/// as a physics integration for Amethyst exists, we are going to switch to that for collision detection.
-pub struct CollisionSystem;
+/// O(n^2) collision detection between all circle colliders.
+/// When two circles overlap, the velocity of the first entity is redirected
+/// away from the second entity, and a CollisionEvent is emitted.
+pub fn collision_system(
+    mut query: Query<(Entity, &collider::Circle, &mut Movement, &Transform)>,
+    others: Query<(Entity, &collider::Circle, &Transform)>,
+    mut collision_events: EventWriter<CollisionEvent>,
+) {
+    // We need to collect positions first to avoid borrow conflicts.
+    // The original Amethyst code iterated (circles, mut movements, locals, entities)
+    // against (circles, locals, entities), which Bevy's borrow checker won't allow
+    // with a single query. We use two separate queries instead.
+    let other_data: Vec<(Entity, f32, Vec3)> = others
+        .iter()
+        .map(|(entity, circle, transform)| (entity, circle.radius, transform.translation))
+        .collect();
 
-impl<'s> System<'s> for CollisionSystem {
-    type SystemData = (
-        ReadStorage<'s, collider::Circle>,
-        WriteStorage<'s, creatures::Movement>,
-        WriteStorage<'s, Transform>,
-        Entities<'s>,
-        Write<'s, EventChannel<CollisionEvent>>,
-    );
+    for (entity_a, circle_a, mut movement, transform_a) in &mut query {
+        let pos_a = transform_a.translation;
 
-    fn run(
-        &mut self,
-        (circles, mut movements, locals, entities, mut collision_events): Self::SystemData,
-    ) {
-        #[cfg(feature = "profiler")]
-        profile_scope!("collision_system");
-        for (circle_a, movement, local_a, entity_a) in
-            (&circles, &mut movements, &locals, &entities).join()
-        {
-            for (circle_b, local_b, entity_b) in (&circles, &locals, &entities).join() {
-                if entity_a == entity_b {
-                    continue;
-                }
+        for &(entity_b, radius_b, pos_b) in &other_data {
+            if entity_a == entity_b {
+                continue;
+            }
 
-                let allowed_distance = circle_a.radius + circle_b.radius;
-                let direction = local_a.translation() - local_b.translation();
-                if direction.magnitude_squared() < allowed_distance * allowed_distance {
-                    collision_events.single_write(CollisionEvent::new(entity_a, entity_b));
+            let allowed_distance = circle_a.radius + radius_b;
+            let direction = pos_a - pos_b;
+            if direction.length_squared() < allowed_distance * allowed_distance {
+                collision_events.send(CollisionEvent::new(entity_a, entity_b));
 
-                    if direction.magnitude() < f32::EPSILON {
-                        movement.velocity = -movement.velocity;
-                    } else {
-                        let norm_direction = direction.normalize();
-                        movement.velocity = norm_direction * movement.velocity.magnitude();
-                    }
+                if direction.length() < f32::EPSILON {
+                    movement.velocity = -movement.velocity;
+                } else {
+                    let norm_direction = direction.normalize();
+                    movement.velocity = norm_direction * movement.velocity.length();
                 }
             }
         }
     }
 }
 
-pub struct DebugColliderSystem;
+/// Clamps creature positions within the WorldBounds rectangle.
+pub fn enforce_bounds_system(
+    mut query: Query<&mut Transform, With<CreatureTag>>,
+    bounds: Res<WorldBounds>,
+) {
+    for mut transform in &mut query {
+        let pos = transform.translation;
 
-impl<'s> System<'s> for DebugColliderSystem {
-    type SystemData = (
-        ReadStorage<'s, collider::Circle>,
-        ReadStorage<'s, Transform>,
-        WriteStorage<'s, DebugLinesComponent>,
-    );
+        if pos.x > bounds.right {
+            transform.translation.x = bounds.right;
+        } else if pos.x < bounds.left {
+            transform.translation.x = bounds.left;
+        }
 
-    fn run(&mut self, (circles, locals, mut debug_lines_comps): Self::SystemData) {
-        for (circle, local, db_comp) in (&circles, &locals, &mut debug_lines_comps).join() {
-            let mut position = local.global_matrix().column(3).xyz();
-            position[2] += 1.0;
-            db_comp.add_circle_2d(
-                Point3::from(position),
-                circle.radius,
-                16,
-                Srgba::new(1.0, 0.5, 0.5, 1.0),
-            );
+        if pos.y > bounds.top {
+            transform.translation.y = bounds.top;
+        } else if pos.y < bounds.bottom {
+            transform.translation.y = bounds.bottom;
         }
     }
 }
 
-#[derive(Default)]
-pub struct DebugCollisionEventSystem {
-    event_reader: Option<ReaderId<CollisionEvent>>,
+/// Debug system that logs collision events to the console.
+pub fn debug_collision_event_system(
+    mut collision_events: EventReader<CollisionEvent>,
+) {
+    for event in collision_events.read() {
+        info!("Received collision event {:?}", event);
+    }
 }
 
-impl<'s> System<'s> for DebugCollisionEventSystem {
-    type SystemData = (Write<'s, EventChannel<CollisionEvent>>,);
-
-    fn run(&mut self, (collision_events,): Self::SystemData) {
-        let event_reader = self
-            .event_reader
-            .as_mut()
-            .expect("`DebugCollisionEventSystem::setup` was not called before `DebugCollisionEventSystem::run`");
-
-        for event in collision_events.read(event_reader) {
-            info!("Received collision event {:?}", event)
-        }
-    }
-
-    fn setup(&mut self, world: &mut World) {
-        <Self as System<'_>>::SystemData::setup(world);
-        self.event_reader = Some(
-            world
-                .fetch_mut::<EventChannel<CollisionEvent>>()
-                .register_reader(),
+/// Debug system that draws collider circles using Gizmos.
+pub fn debug_collider_system(
+    query: Query<(&collider::Circle, &GlobalTransform)>,
+    mut gizmos: Gizmos,
+) {
+    for (circle, global_transform) in &query {
+        let mut position = global_transform.translation();
+        position.z += 1.0;
+        gizmos.circle_2d(
+            Isometry2d::from_translation(position.truncate()),
+            circle.radius,
+            Color::srgba(1.0, 0.5, 0.5, 1.0),
         );
     }
 }

@@ -4,5 +4,4 @@ pub mod creatures;
 pub mod digestion;
 pub mod swarm;
 
-mod experimental;
-pub use experimental::*;
+pub mod experimental;

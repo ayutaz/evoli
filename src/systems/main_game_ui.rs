@@ -1,161 +1,196 @@
-use amethyst::{
-    ecs::*,
-    input::{InputEvent, StringBindings},
-    shrev::{EventChannel, ReaderId},
-    ui::*,
-};
+use bevy::prelude::*;
 
-pub struct ButtonInfo {
-    pub name: &'static str,
-    pub text: &'static str,
-    pub action: &'static str,
+// ---------------------------------------------------------------------------
+// Marker components for UI buttons
+// ---------------------------------------------------------------------------
+
+#[derive(Component)]
+pub struct PauseButton;
+
+#[derive(Component)]
+pub struct SpeedUpButton;
+
+#[derive(Component)]
+pub struct SlowDownButton;
+
+#[derive(Component)]
+pub struct MenuButton;
+
+/// Root node of the in-game UI – used for cleanup when leaving the game state.
+#[derive(Component)]
+pub struct GameUiRoot;
+
+/// Marker placed on the `Text` child of the pause button so we can toggle
+/// its label between "Pause" and "Play".
+#[derive(Component)]
+pub struct PauseButtonText;
+
+// ---------------------------------------------------------------------------
+// Events emitted by UI buttons (consumed by other systems)
+// ---------------------------------------------------------------------------
+
+/// Fired when the player presses the Speed-Up button.
+#[derive(Event)]
+pub struct SpeedUpEvent;
+
+/// Fired when the player presses the Slow-Down button.
+#[derive(Event)]
+pub struct SlowDownEvent;
+
+/// Fired when the player presses the Pause / Play button.
+#[derive(Event)]
+pub struct TogglePauseEvent;
+
+/// Fired when the player presses the Menu button.
+#[derive(Event)]
+pub struct MenuEvent;
+
+// ---------------------------------------------------------------------------
+// Setup / teardown
+// ---------------------------------------------------------------------------
+
+/// Spawns the bottom-bar game UI with Pause, >>, <<, and Menu buttons.
+pub fn setup_game_ui(mut commands: Commands) {
+    commands
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Auto,
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(10.0),
+                justify_content: JustifyContent::Center,
+                column_gap: Val::Px(10.0),
+                ..default()
+            },
+            GameUiRoot,
+        ))
+        .with_children(|parent| {
+            spawn_button(parent, "Pause", PauseButton, true);
+            spawn_button(parent, ">>", SpeedUpButton, false);
+            spawn_button(parent, "<<", SlowDownButton, false);
+            spawn_button(parent, "Menu", MenuButton, false);
+        });
 }
 
-const DEFAULT_BUTTON: ButtonInfo = ButtonInfo {
-    name: "",
-    text: "",
-    action: "",
-};
+/// Helper – spawns a single button entity with a text child.
+///
+/// If `mark_text` is `true` the text entity also receives `PauseButtonText` so
+/// we can find it later to toggle the label.
+fn spawn_button(
+    parent: &mut ChildBuilder,
+    label: &str,
+    marker: impl Component,
+    mark_text: bool,
+) {
+    parent
+        .spawn((
+            Button,
+            Node {
+                width: Val::Px(120.0),
+                height: Val::Px(40.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.2, 0.2, 0.2)),
+            marker,
+        ))
+        .with_children(|btn| {
+            let mut text_cmd = btn.spawn((
+                Text::new(label.to_string()),
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+            ));
+            if mark_text {
+                text_cmd.insert(PauseButtonText);
+            }
+        });
+}
 
-impl Default for &ButtonInfo {
-    fn default() -> Self {
-        &DEFAULT_BUTTON
+/// Despawns the entire game UI hierarchy.
+pub fn cleanup_game_ui(mut commands: Commands, query: Query<Entity, With<GameUiRoot>>) {
+    for entity in &query {
+        commands.entity(entity).despawn_recursive();
     }
 }
 
-// centralize the button strings here (used in both button creation and response logic)
-// NOTE name and text will need to be kept in alignment with main_game.ron; action will need to be kept in alignment with input.ron
-pub const MENU_BUTTON: ButtonInfo = ButtonInfo {
-    name: "menu button",
-    text: "Menu",
-    action: "Menu",
-};
-pub const PAUSE_BUTTON: ButtonInfo = ButtonInfo {
-    name: "pause button",
-    text: "Pause",
-    action: "TogglePause",
-};
-pub const SLOW_DOWN_BUTTON: ButtonInfo = ButtonInfo {
-    name: "slow down button",
-    text: "Slow Down",
-    action: "SlowDown",
-};
-pub const SPEED_UP_BUTTON: ButtonInfo = ButtonInfo {
-    name: "speed up button",
-    text: "Speed Up",
-    action: "SpeedUp",
-};
+// ---------------------------------------------------------------------------
+// Interaction handling
+// ---------------------------------------------------------------------------
 
-pub const BUTTON_INFOS: [&ButtonInfo; 4] = [
-    &MENU_BUTTON,
-    &PAUSE_BUTTON,
-    &SLOW_DOWN_BUTTON,
-    &SPEED_UP_BUTTON,
-];
-
-#[derive(Default)]
-struct Button {
-    info: &'static ButtonInfo,
-    entity: Option<Entity>,
-}
-
-#[derive(Default)]
-pub struct MainGameUiSystem {
-    ui_reader_id: Option<ReaderId<UiEvent>>,
-    input_reader_id: Option<ReaderId<InputEvent<StringBindings>>>,
-    buttons: Vec<Button>,
-    pause_button_text: Option<Entity>,
-}
-
-// implementation-specific, hidden way of producing the name of a button's child text widget, given the button name
-fn make_ui_text_name(button_name: &str) -> String {
-    format!("{}_btn_txt", button_name)
-}
-
-impl<'s> MainGameUiSystem {
-    fn find_ui_elements(&mut self, finder: &UiFinder) {
-        if self.buttons.is_empty() {
-            self.buttons = BUTTON_INFOS
-                .iter()
-                .map(|info| Button {
-                    info,
-                    entity: finder.find(info.name),
-                })
-                .collect::<Vec<Button>>();
-            self.pause_button_text = finder.find(&make_ui_text_name(PAUSE_BUTTON.name));
-        }
-    }
-
-    // translate ui button clicks into input actions for registered buttons
-    fn translate_click(
-        &self,
-        clicked: Entity,
-        input_events: &mut Write<'s, EventChannel<InputEvent<StringBindings>>>,
-    ) {
-        if let Some(button) = self
-            .buttons
-            .iter()
-            .find(|button| button.entity == Some(clicked))
-        {
-            input_events.single_write(InputEvent::ActionPressed(button.info.action.to_string()));
-        }
-    }
-
-    fn handle_action(&self, action: &str, ui_texts: &mut WriteStorage<'s, UiText>) {
-        // only one action handled right now; change to 'match' when we handle more
-        if action != PAUSE_BUTTON.action {
-            return;
-        }
-
-        // toggle text between 'Play' and 'Pause' depending on what the next click will do
-        const PAUSE_TEXT: &str = PAUSE_BUTTON.text;
-        const PLAY_TEXT: &str = "Play";
-        if let Some(text_entity) = self.pause_button_text {
-            if let Some(ui_text) = ui_texts.get_mut(text_entity) {
-                if ui_text.text == PAUSE_TEXT {
-                    ui_text.text = PLAY_TEXT.to_string();
-                } else if ui_text.text == PLAY_TEXT {
-                    ui_text.text = PAUSE_TEXT.to_string();
+/// Reacts to button clicks and emits the corresponding events.
+///
+/// * Pause  – sends `TogglePauseEvent` and toggles the button label.
+/// * >>     – sends `SpeedUpEvent`.
+/// * <<     – sends `SlowDownEvent`.
+/// * Menu   – sends `MenuEvent`.
+pub fn game_ui_interaction(
+    pause_query: Query<&Interaction, (Changed<Interaction>, With<PauseButton>)>,
+    speed_up_query: Query<&Interaction, (Changed<Interaction>, With<SpeedUpButton>)>,
+    slow_down_query: Query<&Interaction, (Changed<Interaction>, With<SlowDownButton>)>,
+    menu_query: Query<&Interaction, (Changed<Interaction>, With<MenuButton>)>,
+    mut pause_text_query: Query<&mut Text, With<PauseButtonText>>,
+    mut ev_toggle_pause: EventWriter<TogglePauseEvent>,
+    mut ev_speed_up: EventWriter<SpeedUpEvent>,
+    mut ev_slow_down: EventWriter<SlowDownEvent>,
+    mut ev_menu: EventWriter<MenuEvent>,
+) {
+    // Pause / Play
+    for interaction in &pause_query {
+        if *interaction == Interaction::Pressed {
+            ev_toggle_pause.send(TogglePauseEvent);
+            // Toggle button label
+            for mut text in &mut pause_text_query {
+                let current = text.0.clone();
+                if current == "Pause" {
+                    text.0 = "Play".to_string();
+                } else {
+                    text.0 = "Pause".to_string();
                 }
             }
         }
     }
-}
 
-impl<'s> System<'s> for MainGameUiSystem {
-    type SystemData = (
-        UiFinder<'s>,
-        Read<'s, EventChannel<UiEvent>>,
-        WriteStorage<'s, UiText>,
-        Write<'s, EventChannel<InputEvent<StringBindings>>>,
-    );
-
-    fn setup(&mut self, world: &mut World) {
-        <Self as System<'_>>::SystemData::setup(world);
-        self.ui_reader_id = Some(world.fetch_mut::<EventChannel<UiEvent>>().register_reader());
-        self.input_reader_id = Some(
-            world
-                .fetch_mut::<EventChannel<InputEvent<StringBindings>>>()
-                .register_reader(),
-        );
+    // Speed up
+    for interaction in &speed_up_query {
+        if *interaction == Interaction::Pressed {
+            ev_speed_up.send(SpeedUpEvent);
+        }
     }
 
-    fn run(&mut self, (ui_finder, ui_events, mut ui_texts, mut input_events): Self::SystemData) {
-        self.find_ui_elements(&ui_finder);
+    // Slow down
+    for interaction in &slow_down_query {
+        if *interaction == Interaction::Pressed {
+            ev_slow_down.send(SlowDownEvent);
+        }
+    }
 
-        ui_events
-            .read(self.ui_reader_id.as_mut().unwrap())
-            // filter for Clicks; change to 'match' when other UiEventType variants need to be handled
-            .filter(|event| event.event_type == UiEventType::Click)
-            .for_each(|event| self.translate_click(event.target, &mut input_events));
+    // Menu
+    for interaction in &menu_query {
+        if *interaction == Interaction::Pressed {
+            ev_menu.send(MenuEvent);
+        }
+    }
+}
 
-        input_events
-            .read(self.input_reader_id.as_mut().unwrap())
-            .for_each(|event| {
-                // change from if-let to match when more InputEvent variants need to be handled
-                if let InputEvent::ActionPressed(action_name) = event {
-                    self.handle_action(action_name, &mut ui_texts);
-                }
-            });
+/// Visual feedback – changes button colour on hover / press.
+pub fn button_visual_feedback(
+    mut query: Query<(&Interaction, &mut BackgroundColor), (Changed<Interaction>, With<Button>)>,
+) {
+    for (interaction, mut bg) in &mut query {
+        match *interaction {
+            Interaction::Pressed => {
+                *bg = BackgroundColor(Color::srgb(0.4, 0.4, 0.4));
+            }
+            Interaction::Hovered => {
+                *bg = BackgroundColor(Color::srgb(0.3, 0.3, 0.3));
+            }
+            Interaction::None => {
+                *bg = BackgroundColor(Color::srgb(0.2, 0.2, 0.2));
+            }
+        }
     }
 }

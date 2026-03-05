@@ -1,89 +1,51 @@
-use crate::{
-    resources::{
-        audio::initialise_audio,
-        prefabs::{initialize_prefabs, update_prefabs},
-        wind::*,
-        world_bounds::WorldBounds,
-    },
-    states::{main_game::MainGameState, menu::MenuState},
-};
-use std::env;
+use bevy::prelude::*;
 
-use crate::components::combat::load_factions;
-use amethyst::{
-    assets::ProgressCounter,
-    prelude::*,
-    renderer::debug_drawing::{DebugLines, DebugLinesParams},
-};
+use crate::AppState;
+use crate::resources::world_bounds::WorldBounds;
+use crate::resources::debug::DebugConfig;
+use crate::resources::experimental::wind::Wind;
 
-const SKIP_MENU_ARG: &str = "no_menu";
+pub struct LoadingPlugin;
 
-pub struct LoadingState {
-    config_path: String,
-    prefab_loading_progress: Option<ProgressCounter>,
-}
-
-impl Default for LoadingState {
-    fn default() -> Self {
-        LoadingState {
-            config_path: "".to_string(),
-            prefab_loading_progress: None,
-        }
+impl Plugin for LoadingPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(OnEnter(AppState::Loading), setup_loading)
+           .add_systems(Update, check_loading.run_if(in_state(AppState::Loading)));
     }
 }
 
-impl LoadingState {
-    pub fn new(config_path: String) -> Self {
-        LoadingState {
-            config_path,
-            prefab_loading_progress: None,
-        }
-    }
+fn setup_loading(mut commands: Commands) {
+    // Initialize core resources
+    commands.insert_resource(WorldBounds::new(-10.0, 10.0, -10.0, 10.0));
+    commands.insert_resource(DebugConfig::default());
+
+    // Load Wind config from RON file using std::fs
+    let wind = load_wind_config();
+    commands.insert_resource(wind);
 }
 
-impl SimpleState for LoadingState {
-    fn on_start(&mut self, mut data: StateData<GameData>) {
-        load_factions(data.world);
-        self.prefab_loading_progress = Some(initialize_prefabs(&mut data.world));
-        // オーディオ初期化 — macOS 26.0+のCoreAudio非互換によりpanicする場合がある
-        if std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            initialise_audio(data.world);
-        })).is_err() {
-            warn!("Audio initialization failed, continuing without audio");
-        }
-        data.world.insert(DebugLinesParams { line_width: 1.0 });
+fn check_loading(mut next_state: ResMut<NextState<AppState>>) {
+    // Simple version: transition to Menu immediately.
+    // In a full implementation, this would wait for asset loading to complete.
+    next_state.set(AppState::Menu);
+}
 
-        data.world.insert(DebugLines::new());
-        data.world
-            .insert(WorldBounds::new(-10.0, 10.0, -10.0, 10.0));
-        let wind_config_path = self.config_path.clone() + "/wind.ron";
-        let wind_config = Wind::load(wind_config_path).unwrap_or_else(|error| {
-            error!("Failed to load wind resource from config file. Using Wind::default() instead. Error: {:?}", error);
-            Wind::default()
-        });
-        data.world.insert(wind_config);
-    }
-
-    fn update(&mut self, data: &mut StateData<GameData>) -> SimpleTrans {
-        data.data.update(&data.world);
-        if let Some(ref counter) = self.prefab_loading_progress.as_ref() {
-            println!(
-                "Loading: {}, Failed: {}, Finished: {}",
-                counter.num_loading(),
-                counter.num_failed(),
-                counter.num_finished()
-            );
-            if counter.is_complete() {
-                self.prefab_loading_progress = None;
-                update_prefabs(&mut data.world);
-                if env::args().any(|arg| arg == SKIP_MENU_ARG) {
-                    return Trans::Switch(Box::new(MainGameState::new(data.world)));
-                } else {
-                    return Trans::Switch(Box::new(MenuState::default()));
+/// Load the Wind resource from the RON configuration file.
+/// Falls back to default values if the file cannot be read or parsed.
+fn load_wind_config() -> Wind {
+    match std::fs::read_to_string("resources/wind.ron") {
+        Ok(contents) => {
+            match ron::de::from_str::<Wind>(&contents) {
+                Ok(wind) => wind,
+                Err(e) => {
+                    warn!("Failed to parse wind config: {:?}. Using default.", e);
+                    Wind::default()
                 }
             }
         }
-
-        Trans::None
+        Err(e) => {
+            warn!("Failed to read wind config file: {:?}. Using default.", e);
+            Wind::default()
+        }
     }
 }

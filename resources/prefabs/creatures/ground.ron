@@ -1,14 +1,18 @@
-#![enable(implicit_some)]
-Prefab (
-    entities: [
-        (
-            data: (
-                name: (
-                    name: "Ground"
-                ),
-                gltf: File("assets/ground2.glb", ()),
-            ),
-        ),
-    ],
-
+(
+    name: "Ground",
+    gltf: Some("assets/ground2.glb"),
+    creature_tag: false,
+    movement: None,
+    wander: None,
+    collider: None,
+    combat: None,
+    digestion: None,
+    intelligence_tag: false,
+    perception: None,
+    ricochet_tag: false,
+    avoid_obstacles_tag: false,
+    carcass: None,
+    despawn_when_out_of_bounds_tag: false,
+    topplegrass_tag: false,
+    falling_tag: false,
 )

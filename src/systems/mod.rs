@@ -10,6 +10,6 @@ pub mod main_game_ui;
 pub mod movement;
 pub mod spawner;
 pub mod swarm_behavior;
+pub mod time_control;
 
-mod experimental;
-pub use experimental::*;
+pub mod experimental;

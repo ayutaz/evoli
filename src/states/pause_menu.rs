@@ -1,85 +1,154 @@
-use crate::resources::prefabs::UiPrefabRegistry;
-use crate::states::menu::MenuState;
-use amethyst::{
-    ecs::Entity,
-    prelude::*,
-    shrev::EventChannel,
-    ui::{UiEvent, UiEventType, UiFinder},
-    TransEvent,
-};
+use bevy::prelude::*;
 
-#[derive(Default)]
-pub struct PauseMenuState {
-    // button entities are created in on_start() and destroyed in on_stop()
-    // if there is an invalid Entity that could be assigned to these by default, that'd be better than using Option
-    resume_button: Option<Entity>,
-    exit_to_main_menu_button: Option<Entity>,
-    root: Option<Entity>,
+use crate::AppState;
+use crate::GamePlayState;
+
+pub struct PauseMenuPlugin;
+
+impl Plugin for PauseMenuPlugin {
+    fn build(&self, app: &mut App) {
+        // Toggle pause with Escape while in-game
+        app.add_systems(Update, pause_toggle.run_if(in_state(AppState::InGame)));
+        // Show/hide the pause menu overlay based on GamePlayState
+        app.add_systems(OnEnter(GamePlayState::Paused), show_pause_menu);
+        app.add_systems(OnExit(GamePlayState::Paused), hide_pause_menu);
+        // Handle pause menu button interactions
+        app.add_systems(
+            Update,
+            pause_menu_interaction.run_if(in_state(GamePlayState::Paused)),
+        );
+    }
 }
 
-const PAUSE_MENU_ID: &str = "pause_menu";
-const RESUME_BUTTON_ID: &str = "resume";
-const EXIT_TO_MAIN_MENU_BUTTON_ID: &str = "exit_to_main_menu";
+/// Marker component for the pause menu UI root, used for cleanup.
+#[derive(Component)]
+struct PauseMenuRoot;
 
-// load the pause_menu.ron prefab then instantiate it
-// if the "resume" button is clicked, goto MainGameState
-// if the "exit_to_main_menu" button is clicked, remove the pause and main game states and go to MenuState.
-impl<'a> SimpleState for PauseMenuState {
-    fn on_start(&mut self, data: StateData<GameData>) {
-        // assume UiPrefab loading has happened in a previous state
-        // look through the UiPrefabRegistry for the "menu" prefab and instantiate it
-        let menu_prefab = data
-            .world
-            .read_resource::<UiPrefabRegistry>()
-            .find(data.world, PAUSE_MENU_ID);
-        if let Some(menu_prefab) = menu_prefab {
-            self.root = Some(data.world.create_entity().with(menu_prefab).build());
+/// Marker for the Resume button.
+#[derive(Component)]
+struct ResumeButton;
+
+/// Marker for the Main Menu button.
+#[derive(Component)]
+struct MainMenuButton;
+
+fn pause_toggle(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    current_state: Res<State<GamePlayState>>,
+    mut next_state: ResMut<NextState<GamePlayState>>,
+) {
+    if keyboard.just_pressed(KeyCode::Escape) {
+        match current_state.get() {
+            GamePlayState::Running => next_state.set(GamePlayState::Paused),
+            GamePlayState::Paused => next_state.set(GamePlayState::Running),
         }
     }
+}
 
-    fn on_stop(&mut self, data: StateData<GameData>) {
-        if let Some(root) = self.root {
-            if data.world.delete_entity(root).is_ok() {
-                self.root = None;
-            }
-        }
-        self.resume_button = None;
-        self.exit_to_main_menu_button = None;
+fn show_pause_menu(mut commands: Commands) {
+    // Semi-transparent overlay with pause menu buttons
+    commands
+        .spawn((
+            PauseMenuRoot,
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                row_gap: Val::Px(20.0),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
+            // High z-index to render above game UI
+            GlobalZIndex(100),
+        ))
+        .with_children(|parent| {
+            // "Paused" title
+            parent.spawn((
+                Text::new("Paused"),
+                TextFont {
+                    font_size: 64.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(1.0, 1.0, 1.0)),
+            ));
+
+            // Resume button
+            parent
+                .spawn((
+                    ResumeButton,
+                    Button,
+                    Node {
+                        width: Val::Px(200.0),
+                        height: Val::Px(65.0),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.2, 0.6, 0.2)),
+                ))
+                .with_children(|parent| {
+                    parent.spawn((
+                        Text::new("Resume"),
+                        TextFont {
+                            font_size: 32.0,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+                    ));
+                });
+
+            // Main Menu button
+            parent
+                .spawn((
+                    MainMenuButton,
+                    Button,
+                    Node {
+                        width: Val::Px(200.0),
+                        height: Val::Px(65.0),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.6, 0.2, 0.2)),
+                ))
+                .with_children(|parent| {
+                    parent.spawn((
+                        Text::new("Main Menu"),
+                        TextFont {
+                            font_size: 32.0,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+                    ));
+                });
+        });
+}
+
+fn hide_pause_menu(mut commands: Commands, query: Query<Entity, With<PauseMenuRoot>>) {
+    for entity in &query {
+        commands.entity(entity).despawn_recursive();
     }
+}
 
-    fn handle_event(&mut self, data: StateData<GameData>, event: StateEvent) -> SimpleTrans {
-        match event {
-            StateEvent::Ui(UiEvent {
-                event_type: UiEventType::Click,
-                target,
-            }) => {
-                if Some(target) == self.resume_button {
-                    Trans::Pop
-                } else if Some(target) == self.exit_to_main_menu_button {
-                    let mut state_transition_event_channel = data
-                        .world
-                        .write_resource::<EventChannel<TransEvent<GameData, StateEvent>>>();
-                    state_transition_event_channel.single_write(Box::new(|| Trans::Pop));
-                    state_transition_event_channel
-                        .single_write(Box::new(|| Trans::Switch(Box::new(MenuState::default()))));
-                    Trans::None
-                } else {
-                    Trans::None
-                }
-            }
-            _ => Trans::None,
+fn pause_menu_interaction(
+    mut next_gameplay_state: ResMut<NextState<GamePlayState>>,
+    mut next_app_state: ResMut<NextState<AppState>>,
+    resume_query: Query<&Interaction, (Changed<Interaction>, With<ResumeButton>)>,
+    menu_query: Query<&Interaction, (Changed<Interaction>, With<MainMenuButton>)>,
+) {
+    for interaction in &resume_query {
+        if *interaction == Interaction::Pressed {
+            next_gameplay_state.set(GamePlayState::Running);
         }
     }
-
-    fn update(&mut self, data: &mut StateData<GameData>) -> SimpleTrans {
-        data.data.update(&data.world);
-        // once deferred creation of the root ui entity finishes, look up buttons
-        if self.resume_button.is_none() || self.exit_to_main_menu_button.is_none() {
-            data.world.exec(|ui_finder: UiFinder<'_>| {
-                self.resume_button = ui_finder.find(RESUME_BUTTON_ID);
-                self.exit_to_main_menu_button = ui_finder.find(EXIT_TO_MAIN_MENU_BUTTON_ID);
-            });
+    for interaction in &menu_query {
+        if *interaction == Interaction::Pressed {
+            // Return to Running first (so OnExit(Paused) fires and cleans up pause UI),
+            // then switch to Menu (which triggers OnExit(InGame) to clean up game entities).
+            next_gameplay_state.set(GamePlayState::Running);
+            next_app_state.set(AppState::Menu);
         }
-        Trans::None
     }
 }

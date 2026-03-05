@@ -1,8 +1,4 @@
-use amethyst::core::math::Vector3;
-use amethyst::{
-    core::Transform,
-    ecs::{join::Join, Entities, ReadExpect, ReadStorage, System, WriteStorage},
-};
+use bevy::prelude::*;
 
 use std::cmp::Ordering;
 
@@ -14,24 +10,18 @@ use crate::systems::behaviors::decision::Closest;
 pub struct Obstacle;
 
 /// Determine the closest bounding wall based on a location
-fn closest_wall(location: &Vector3<f32>, bounds: &WorldBounds) -> Vector3<f32> {
-    let mut bounds_left = location.clone();
-    bounds_left.x = bounds.left.into();
-    let mut bounds_right = location.clone();
-    bounds_right.x = bounds.right.into();
-    let mut bounds_top = location.clone();
-    bounds_top.y = bounds.top.into();
-    let mut bounds_bottom = location.clone();
-    bounds_bottom.y = bounds.bottom.into();
+fn closest_wall(location: &Vec3, bounds: &WorldBounds) -> Vec3 {
+    let bounds_left = Vec3::new(bounds.left, location.y, location.z);
+    let bounds_right = Vec3::new(bounds.right, location.y, location.z);
+    let bounds_top = Vec3::new(location.x, bounds.top, location.z);
+    let bounds_bottom = Vec3::new(location.x, bounds.bottom, location.z);
 
-    // Iterates through each bound
+    // Iterates through each bound, calculates the distance vector, and returns the minimum
     [bounds_left, bounds_right, bounds_top, bounds_bottom]
         .iter()
-        // Calculates the distance between the wall & the location
-        .map(|v| v - location)
-        // Returns the minimum distance
+        .map(|v| *v - *location)
         .min_by(|a, b| {
-            if a.magnitude_squared() < b.magnitude_squared() {
+            if a.length_squared() < b.length_squared() {
                 Ordering::Less
             } else {
                 Ordering::Greater
@@ -40,37 +30,26 @@ fn closest_wall(location: &Vector3<f32>, bounds: &WorldBounds) -> Vector3<f32> {
         .unwrap()
 }
 
-pub struct ClosestObstacleSystem;
-impl<'s> System<'s> for ClosestObstacleSystem {
-    type SystemData = (
-        Entities<'s>,
-        ReadStorage<'s, Transform>,
-        ReadStorage<'s, Movement>,
-        ReadExpect<'s, WorldBounds>,
-        ReadStorage<'s, AvoidObstaclesTag>,
-        WriteStorage<'s, Closest<Obstacle>>,
-    );
+pub fn closest_obstacle_system(
+    mut commands: Commands,
+    world_bounds: Res<WorldBounds>,
+    existing_obstacles: Query<Entity, With<Closest<Obstacle>>>,
+    query: Query<(Entity, &Transform, &Movement, &AvoidObstaclesTag)>,
+) {
+    // Right now the only obstacles are the world bound walls, so it's
+    // safe to clear this out.
+    for entity in existing_obstacles.iter() {
+        commands.entity(entity).remove::<Closest<Obstacle>>();
+    }
 
-    fn run(
-        &mut self,
-        (entities, transforms, movements, world_bounds, avoid_obstacles, mut closest_obstacle): Self::SystemData,
-    ) {
-        // Right now the only obstacles are the world bound walls, so it's
-        // safe to clear this out.
-        closest_obstacle.clear();
-
-        let threshold = 3.0f32.powi(2);
-        for (entity, transform, _, _) in
-            (&entities, &transforms, &avoid_obstacles, &movements).join()
-        {
-            // Find the closest wall to this entity
-            let wall_dir = closest_wall(&transform.translation(), &world_bounds);
-            if wall_dir.magnitude_squared() < threshold {
-                let dir = Vector3::new(wall_dir[0], wall_dir[1], wall_dir[2]);
-                closest_obstacle
-                    .insert(entity, Closest::<Obstacle>::new(dir))
-                    .expect("Unable to add obstacle to entity");
-            }
+    let threshold = 3.0f32.powi(2);
+    for (entity, transform, _movement, _avoid) in query.iter() {
+        // Find the closest wall to this entity
+        let wall_dir = closest_wall(&transform.translation, &world_bounds);
+        if wall_dir.length_squared() < threshold {
+            commands
+                .entity(entity)
+                .insert(Closest::<Obstacle>::new(wall_dir));
         }
     }
 }

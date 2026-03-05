@@ -1,28 +1,14 @@
-use amethyst::{
-    assets::PrefabData,
-    derive::PrefabData,
-    ecs::{BitSet, Component, DenseVecStorage, Entity, WriteStorage},
-    Error,
-};
-//use amethyst_inspector::Inspect;
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
-#[derive(Default, Clone, Debug, Serialize, Deserialize, PrefabData)]
-#[prefab(Component)]
+#[derive(Default, Clone, Debug, Serialize, Deserialize, Component)]
 #[serde(default)]
 pub struct Perception {
     pub range: f32,
 }
 
-impl Component for Perception {
-    type Storage = DenseVecStorage<Self>;
-}
-
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Component)]
 pub struct DetectedEntities {
-    pub entities: BitSet,
-}
-
-impl Component for DetectedEntities {
-    type Storage = DenseVecStorage<Self>;
+    pub entities: HashSet<Entity>,
 }

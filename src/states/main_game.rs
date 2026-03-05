@@ -1,510 +1,149 @@
-use amethyst;
-use amethyst::{
-    core::math::{clamp, Rotation3, Vector3},
-    core::{transform::Transform, ArcThreadPool, Time},
-    ecs::prelude::*,
-    input::InputEvent,
-    prelude::*,
-    renderer::{
-        camera::Camera,
-        debug_drawing::DebugLinesComponent,
-        light::{DirectionalLight, Light},
-        palette::rgb::{Srgb, Srgba},
-        resources::AmbientColor,
-    },
-    shrev::EventChannel,
-    window::ScreenDimensions,
-};
-use std::f32;
-
-use crate::systems::behaviors::decision::{
-    ClosestSystem, Predator, Prey, QueryPredatorsAndPreySystem, SeekSystem,
-};
-use crate::systems::behaviors::obstacle::{ClosestObstacleSystem, Obstacle};
-use crate::{
-    components::creatures::CreatureTag,
-    resources::{
-        debug::DebugConfig, prefabs::UiPrefabRegistry, spatial_grid::SpatialGrid,
-        world_bounds::WorldBounds,
-    },
-    states::pause_menu::PauseMenuState,
-    systems::*,
-};
+use bevy::prelude::*;
 use rand::{thread_rng, Rng};
 use std::f32::consts::PI;
 
-const TIME_SCALE_FACTOR: f32 = 2.0;
-const TIME_SCALE_RANGE: (f32, f32) = (1.0 / 4.0, 1.0 * 4.0);
+use crate::AppState;
+use crate::GamePlayState;
+use crate::components::creatures::CreatureTag;
+use crate::resources::world_bounds::WorldBounds;
 
-pub struct MainGameState {
-    dispatcher: Dispatcher<'static, 'static>,
-    debug_dispatcher: Dispatcher<'static, 'static>,
-    ui_dispatcher: Dispatcher<'static, 'static>,
-    ui: Option<Entity>,
-    camera: Option<Entity>,
-    paused: bool,
-    desired_time_scale: f32,
+pub struct MainGamePlugin;
+
+/// SystemSets that define the execution order within the main game loop.
+/// These replace the three Amethyst Dispatchers (main, debug, ui).
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GameSet {
+    Perception,
+    Decision,
+    Behavior,
+    Movement,
+    Metabolism,
+    Combat,
+    Death,
+    Spawn,
+    Experimental,
 }
 
-impl MainGameState {
-    pub fn new(world: &mut World) -> Self {
-        // For profiling, the dispatcher needs to specify the pool that is created for us by `ApplicationBuilder::new`.
-        // This thread pool will include the necessary setup for `profile_scope`.
-        let pool = (&*world.read_resource::<ArcThreadPool>()).clone();
-        MainGameState {
-            dispatcher: DispatcherBuilder::new()
-                .with_pool(pool)
-                .with(
-                    camera_movement::CameraMovementSystem::default(),
-                    "camera_movement",
-                    &[],
-                )
-                .with(perception::SpatialGridSystem, "spatial_grid", &[])
-                .with(
-                    perception::EntityDetectionSystem,
-                    "entity_detection",
-                    &["spatial_grid"],
-                )
-                .with(
-                    QueryPredatorsAndPreySystem,
-                    "query_predators_and_prey_system",
-                    &[],
-                )
-                .with(ClosestObstacleSystem, "closest_obstacle_system", &[])
-                .with(
-                    ClosestSystem::<Prey>::default(),
-                    "closest_prey_system",
-                    &["query_predators_and_prey_system"],
-                )
-                .with(
-                    ClosestSystem::<Predator>::default(),
-                    "closest_predator_system",
-                    &["query_predators_and_prey_system"],
-                )
-                .with(
-                    SeekSystem::<Prey>::new(
-                        Rotation3::from_axis_angle(&Vector3::z_axis(), 0.0),
-                        1.0,
-                    ),
-                    "seek_prey_system",
-                    &["closest_prey_system"],
-                )
-                .with(
-                    SeekSystem::<Predator>::new(
-                        // 180 degrees, run away!
-                        Rotation3::from_axis_angle(&Vector3::z_axis(), std::f32::consts::PI),
-                        1.0,
-                    ),
-                    "avoid_predator_system",
-                    &["closest_predator_system"],
-                )
-                .with(
-                    SeekSystem::<Obstacle>::new(
-                        // 120 degrees. A little more than perpendicular so the creature
-                        // tries to steer away from the wall rather than just follow it.
-                        Rotation3::from_axis_angle(
-                            &Vector3::z_axis(),
-                            2f32 * std::f32::consts::FRAC_PI_3,
-                        ),
-                        5.0,
-                    ),
-                    "avoid_obstacle_system",
-                    &["closest_obstacle_system"],
-                )
-                .with(behaviors::ricochet::RicochetSystem, "ricochet_system", &[])
-                .with(
-                    behaviors::wander::WanderSystem,
-                    "wander_system",
-                    &[
-                        "seek_prey_system",
-                        "avoid_predator_system",
-                        "avoid_obstacle_system",
-                        "ricochet_system",
-                    ],
-                )
-                .with(
-                    movement::MovementSystem,
-                    "movement_system",
-                    &["wander_system"],
-                )
-                .with(
-                    collision::CollisionSystem,
-                    "collision_system",
-                    &["movement_system"],
-                )
-                .with(
-                    collision::EnforceBoundsSystem,
-                    "enforce_bounds_system",
-                    &["movement_system"],
-                )
-                .with(digestion::DigestionSystem, "digestion_system", &[])
-                .with(
-                    death::StarvationSystem,
-                    "starvation_system",
-                    &["digestion_system"],
-                )
-                .with(combat::CooldownSystem, "cooldown_system", &[])
-                .with(
-                    combat::FindAttackSystem::default(),
-                    "find_attack_system",
-                    &["cooldown_system"],
-                )
-                .with(
-                    combat::PerformDefaultAttackSystem::default(),
-                    "perform_default_attack_system",
-                    &["find_attack_system"],
-                )
-                .with(
-                    death::DeathByHealthSystem,
-                    "death_by_health_system",
-                    &["perform_default_attack_system"],
-                )
-                .with(
-                    death::CarcassSystem::default(),
-                    "carcass_system",
-                    &["death_by_health_system"],
-                )
-                .with(
-                    spawner::DebugSpawnTriggerSystem::default(),
-                    "debug_spawn_trigger",
-                    &[],
-                )
-                .with(
-                    swarm_behavior::SwarmSpawnSystem::default(),
-                    "swarm_spawn",
-                    &[],
-                )
-                .with(
-                    topplegrass::TopplegrassSpawnSystem::default(),
-                    "topplegrass_spawn_system",
-                    &[],
-                )
-                .with(
-                    topplegrass::TopplingSystem::default(),
-                    "toppling_system",
-                    &[],
-                )
-                .with(gravity::GravitySystem::default(), "gravity_system", &[])
-                .with(
-                    out_of_bounds::OutOfBoundsDespawnSystem::default(),
-                    "out_of_bounds_despawn_system",
-                    &[],
-                )
-                .with(
-                    wind_control::DebugWindControlSystem::default(),
-                    "wind_control_system",
-                    &[],
-                )
-                .with(
-                    swarm_behavior::SwarmBehaviorSystem::default(),
-                    "swarm_behavior",
-                    &[],
-                )
-                .with(
-                    swarm_behavior::SwarmCenterSystem::default(),
-                    "swarm_center",
-                    &[],
-                )
-                .with(
-                    spawner::CreatureSpawnerSystem::default(),
-                    "creature_spawner",
-                    &["debug_spawn_trigger", "swarm_spawn"],
-                )
-                .build(),
-            debug_dispatcher: DispatcherBuilder::new()
-                .with(debug::DebugSystem, "debug_system", &[])
-                .with(
-                    collision::DebugCollisionEventSystem::default(),
-                    "debug_collision_event_system",
-                    &["debug_system"],
-                )
-                .with(
-                    collision::DebugColliderSystem,
-                    "debug_collider_system",
-                    &["debug_system"],
-                )
-                .with(
-                    behaviors::wander::DebugWanderSystem,
-                    "debug_wander_system",
-                    &["debug_system"],
-                )
-                .with(
-                    digestion::DebugFullnessSystem,
-                    "debug_fullness_system",
-                    &["debug_system"],
-                )
-                .with(
-                    health::DebugHealthSystem::default(),
-                    "debug_health_system",
-                    &["debug_system"],
-                )
-                .with(
-                    perception::DebugEntityDetectionSystem,
-                    "debug_entity_detection",
-                    &["debug_system"],
-                )
-                .build(),
-            ui_dispatcher: DispatcherBuilder::new()
-                .with(
-                    main_game_ui::MainGameUiSystem::default(),
-                    "main_game_ui",
-                    &[],
-                )
-                .build(),
-            ui: None,
-            camera: None,
-            paused: false,
-            desired_time_scale: 1.0,
-        }
-    }
-
-    // push desired_time_scale into effect
-    fn update_time_scale(&self, world: &mut World) {
-        world
-            .write_resource::<Time>()
-            .set_time_scale(if self.paused {
-                0.0
-            } else {
-                self.desired_time_scale
-            });
-    }
-
-    fn handle_action(&mut self, action: &str, world: &mut World) -> SimpleTrans {
-        if action == "ToggleDebug" {
-            let mut debug_config = world.write_resource::<DebugConfig>();
-            debug_config.visible = !debug_config.visible;
-            Trans::None
-        } else if action == main_game_ui::PAUSE_BUTTON.action {
-            self.paused = !self.paused;
-            self.update_time_scale(world);
-            Trans::None
-        } else if action == main_game_ui::SPEED_UP_BUTTON.action {
-            self.desired_time_scale = clamp(
-                self.desired_time_scale * TIME_SCALE_FACTOR,
-                TIME_SCALE_RANGE.0,
-                TIME_SCALE_RANGE.1,
-            );
-            self.update_time_scale(world);
-            Trans::None
-        } else if action == main_game_ui::SLOW_DOWN_BUTTON.action {
-            self.desired_time_scale = clamp(
-                self.desired_time_scale / TIME_SCALE_FACTOR,
-                TIME_SCALE_RANGE.0,
-                TIME_SCALE_RANGE.1,
-            );
-            self.update_time_scale(world);
-            Trans::None
-        } else if action == main_game_ui::MENU_BUTTON.action {
-            Trans::Push(Box::new(PauseMenuState::default()))
-        } else {
-            Trans::None
-        }
-    }
-}
-
-impl SimpleState for MainGameState {
-    fn handle_event(&mut self, data: StateData<GameData>, event: StateEvent) -> SimpleTrans {
-        match event {
-            StateEvent::Window(_) => Trans::None, // Events related to the window and inputs.
-            StateEvent::Ui(_) => Trans::None,     // Ui event. Button presses, mouse hover, etc...
-            StateEvent::Input(input_event) => {
-                if let InputEvent::ActionPressed(action) = input_event {
-                    self.handle_action(&action, data.world)
-                } else {
-                    Trans::None
-                }
-            }
-        }
-    }
-
-    fn on_start(&mut self, data: StateData<GameData>) {
-        info!("start main game");
-
-        self.dispatcher.setup(data.world);
-        self.debug_dispatcher.setup(data.world);
-        self.ui_dispatcher.setup(data.world);
-
-        // Setup debug config resource
-        data.world.insert(DebugConfig::default());
-        data.world.insert(SpatialGrid::new(1.0f32));
-
-        // main game ui
-        let ui_prefab = data
-            .world
-            .read_resource::<UiPrefabRegistry>()
-            .find(data.world, "main game");
-        if let Some(ui_prefab) = ui_prefab {
-            self.ui = Some(data.world.create_entity().with(ui_prefab).build());
-        }
-
-        data.world.register::<CreatureTag>();
-
-        // Add some plants
-        let (left, right, bottom, top) = {
-            let wb = data.world.read_resource::<WorldBounds>();
-            (wb.left, wb.right, wb.bottom, wb.top)
-        };
-        {
-            let mut rng = thread_rng();
-            for _ in 0..25 {
-                let x = rng.gen_range(left, right);
-                let y = rng.gen_range(bottom, top);
-                let scale = rng.gen_range(0.8f32, 1.2f32);
-                let rotation = rng.gen_range(0.0f32, PI);
-                let mut transform = Transform::default();
-                transform.set_translation_xyz(x, y, 0.01);
-                transform.set_scale(Vector3::new(scale, scale, 1.0));
-                transform.set_rotation_euler(0.0, 0.0, rotation);
-                let plant_entity = data.world.create_entity().with(transform).build();
-                let mut spawn_events = data
-                    .world
-                    .write_resource::<EventChannel<spawner::CreatureSpawnEvent>>();
-                // TODO unfortunate naming here; plants are not creatures...OrganismSpawnEvent or just SpawnEvent?
-                // I would go for something more generic than OrganismSpawnEvent; for example,
-                // Topplegrass isn't really one organism, but more of a set of organisms, both dead and alive.
-                spawn_events.single_write(spawner::CreatureSpawnEvent {
-                    creature_type: "Plant".to_string(),
-                    entity: plant_entity,
-                });
-            }
-        }
-        //insert single nushi
-        {
-            let mut rng = thread_rng();
-            let x = rng.gen_range(left, right);
-            let y = rng.gen_range(bottom, top);
-            let scale = 0.4f32;
-
-            let mut transform = Transform::default();
-            transform.set_translation_xyz(x, y, 1.99);
-            transform.set_scale(Vector3::new(scale, scale, scale));
-
-            //let nushi_entity = data.world.create_entity().with(transform).build();
-            //let mut spawn_events = data
-            //.world
-            //.write_resource::<EventChannel<spawner::CreatureSpawnEvent>>();
-            //spawn_events.single_write(spawner::CreatureSpawnEvent {
-            //creature_type: "Nushi".to_string(),
-            //entity: nushi_entity,
-            //});
-        }
-
-        {
-            let scale = 1.05f32;
-            let mut transform = Transform::default();
-            transform.set_scale(Vector3::new(scale, scale, 1.0f32));
-
-            let ground_entity = data.world.create_entity().with(transform).build();
-            let mut spawn_events = data
-                .world
-                .write_resource::<EventChannel<spawner::CreatureSpawnEvent>>();
-            spawn_events.single_write(spawner::CreatureSpawnEvent {
-                creature_type: "Ground".to_string(),
-                entity: ground_entity,
-            });
-        }
-
-        // Setup directional light (sun)
-        let light_component = Light::Directional(DirectionalLight {
-            color: Srgb::new(1.0, 1.0, 1.0),
-            intensity: 2.0f32,
-            direction: Vector3::new(0.0, 0.3, -1.0),
-        });
-        data.world.create_entity().with(light_component).build();
-
-        data.world
-            .insert(AmbientColor(Srgba::new(0.2f32, 0.2f32, 0.2f32, 1.0f32)));
-
-        // Setup camera
-        let (width, height) = {
-            let dim = data.world.read_resource::<ScreenDimensions>();
-            (dim.width(), dim.height())
-        };
-
-        let mut transform = Transform::default();
-        transform.set_translation_xyz(-10.0, -10.0, 8.0);
-        let pi = f32::consts::PI;
-        transform.set_rotation_euler(pi / 3.0, 0.0, -pi / 4.0);
-        let zoom_factor = 95.0;
-
-        self.camera = Some(
-            data.world
-                .create_entity()
-                .named("Main camera")
-                .with(Camera::orthographic(
-                    -width / zoom_factor,
-                    width / zoom_factor,
-                    -height / zoom_factor,
-                    height / zoom_factor,
-                    0.1f32,
-                    1000.0f32,
-                ))
-                .with(transform)
-                .build(),
+impl Plugin for MainGamePlugin {
+    fn build(&self, app: &mut App) {
+        // Define SystemSet ordering (chain = sequential execution)
+        app.configure_sets(
+            Update,
+            (
+                GameSet::Perception,
+                GameSet::Decision,
+                GameSet::Behavior,
+                GameSet::Movement,
+                GameSet::Metabolism,
+                GameSet::Combat,
+                GameSet::Death,
+                GameSet::Spawn,
+                GameSet::Experimental,
+            )
+                .chain()
+                .run_if(in_state(AppState::InGame))
+                .run_if(in_state(GamePlayState::Running)),
         );
 
-        // initialize time scale
-        self.paused = false;
-        data.world.write_resource::<Time>().set_time_scale(1.0);
+        // OnEnter: set up the game scene (camera, lights, initial entities)
+        app.add_systems(OnEnter(AppState::InGame), setup_main_game);
+        // OnExit: clean up all game entities
+        app.add_systems(OnExit(AppState::InGame), cleanup_main_game);
+    }
+}
+
+/// Marker component for the main game camera.
+#[derive(Component)]
+struct MainGameCamera;
+
+/// Marker component for entities spawned as part of the main game scene
+/// (lights, ground, etc.) that need cleanup on exit.
+#[derive(Component)]
+struct MainGameEntity;
+
+fn setup_main_game(
+    mut commands: Commands,
+    world_bounds: Res<WorldBounds>,
+) {
+    info!("Starting main game");
+
+    // Setup 3D orthographic camera
+    // Original: position (-10, -10, 8), rotation (pi/3, 0, -pi/4), zoom_factor = 95
+    let camera_transform = Transform::from_xyz(-10.0, -10.0, 8.0)
+        .looking_at(Vec3::ZERO, Vec3::Z);
+
+    commands.spawn((
+        MainGameCamera,
+        MainGameEntity,
+        Camera3d::default(),
+        Projection::from(OrthographicProjection {
+            scale: 0.2,
+            near: 0.1,
+            far: 1000.0,
+            ..OrthographicProjection::default_3d()
+        }),
+        camera_transform,
+    ));
+
+    // Setup directional light (sun)
+    commands.spawn((
+        MainGameEntity,
+        DirectionalLight {
+            color: Color::WHITE,
+            illuminance: 10000.0,
+            ..default()
+        },
+        Transform::from_rotation(Quat::from_rotation_x(-PI / 3.0)),
+    ));
+
+    // Setup ambient light
+    commands.insert_resource(AmbientLight {
+        color: Color::srgb(0.2, 0.2, 0.2),
+        brightness: 200.0,
+    });
+
+    // Spawn initial plants
+    let mut rng = thread_rng();
+    for _ in 0..25 {
+        let x = rng.gen_range(world_bounds.left..world_bounds.right);
+        let y = rng.gen_range(world_bounds.bottom..world_bounds.top);
+        let scale = rng.gen_range(0.8f32..1.2f32);
+        let rotation = rng.gen_range(0.0f32..PI);
+
+        commands.spawn((
+            MainGameEntity,
+            CreatureTag,
+            Transform::from_xyz(x, y, 0.01)
+                .with_scale(Vec3::new(scale, scale, 1.0))
+                .with_rotation(Quat::from_rotation_z(rotation)),
+        ));
+        // NOTE: In a full implementation, a CreatureSpawnEvent would be sent here
+        // to attach the Plant prefab data. For now we just spawn the transform + tag.
     }
 
-    fn on_stop(&mut self, data: StateData<GameData>) {
-        info!("stop main game");
+    // Spawn ground entity
+    commands.spawn((
+        MainGameEntity,
+        CreatureTag,
+        Transform::from_scale(Vec3::new(1.05, 1.05, 1.0)),
+    ));
+}
 
-        if let Some(ui) = self.ui {
-            if data.world.delete_entity(ui).is_ok() {
-                self.ui = None;
-            }
-        }
-        if let Some(camera) = self.camera {
-            if data.world.delete_entity(camera).is_ok() {
-                self.camera = None;
-            }
-        }
+fn cleanup_main_game(
+    mut commands: Commands,
+    game_entities: Query<Entity, With<MainGameEntity>>,
+    creature_entities: Query<Entity, With<CreatureTag>>,
+) {
+    info!("Stopping main game");
 
-        // delete all organisms (e.g. creatures, plants, etc.)
-        let organisms = (
-            &data.world.entities(),
-            &data.world.read_storage::<CreatureTag>(),
-        )
-            .join()
-            .map(|(entity, _creature_tag)| entity)
-            .collect::<Vec<Entity>>();
-        data.world
-            .delete_entities(&organisms)
-            .expect("failed to delete all organisms");
-
-        // delete all lights (e.g. creatures, plants, etc.)
-        let mut lights: Vec<Entity> = Vec::new();
-        for (entity, _) in (&data.world.entities(), &data.world.read_storage::<Light>()).join() {
-            lights.push(entity);
-        }
-        data.world
-            .delete_entities(&lights)
-            .expect("failed to delete all lights");
-
-        // fix up time scale before we leave this state
-        data.world.write_resource::<Time>().set_time_scale(1.0);
+    // Despawn all main game scene entities (camera, lights, etc.)
+    for entity in &game_entities {
+        commands.entity(entity).despawn_recursive();
     }
 
-    fn update(&mut self, data: &mut StateData<GameData>) -> SimpleTrans {
-        self.dispatcher.dispatch(&data.world);
-
-        for (db_comp,) in (&mut data.world.write_storage::<DebugLinesComponent>(),).join() {
-            db_comp.clear();
-        }
-        let show_debug = {
-            let debug_config = data.world.read_resource::<DebugConfig>();
-            debug_config.visible
-        };
-        if show_debug {
-            self.debug_dispatcher.dispatch(&data.world);
-        }
-
-        data.data.update(&data.world);
-
-        self.ui_dispatcher.dispatch(&data.world);
-
-        Trans::None
+    // Despawn all creatures/organisms that don't have MainGameEntity
+    for entity in &creature_entities {
+        // despawn_recursive is safe to call on already-despawned entities in Bevy
+        commands.entity(entity).despawn_recursive();
     }
 }

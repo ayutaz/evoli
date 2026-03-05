@@ -1,57 +1,51 @@
-#![enable(implicit_some)]
-Prefab (
-    entities: [
-        (
-            data: (
-                name: (
-                    name: "Herbivore"
-                ),
-                creature_tag: (),
-                gltf: File("assets/slime.glb", ()),
-                movement: (
-                    velocity: [0.0, 0.0, 0.0],
-                    max_movement_speed: 1.75,
-                ),
-                wander: (
-                    angle: 0.0,
-                    radius: 1.0,
-                ),
-                collider: (
-                    radius: 0.45,
-                ),
-                digestion: (
-                    digestion: (
-                        nutrition_burn_rate: 1.0,
-                    ),
-                    fullness: (
-                        max: 100.0,
-                        value: 100.0,
-                    ),
-                ),
-                combat: (
-                    health: (
-                        max_health: 100.0,
-                        value: 100.0,
-                    ),
-                    speed: (
-                        attacks_per_second: 1.0,
-                    ),
-                    damage: (
-                        damage: 20.0,
-                    ),
-                    has_faction: (
-                        faction: "Herbivores",
-                    ),
-                ),
-                intelligence_tag: (),
-                avoid_obstacles_tag: (),
-                perception: (
-                    range: 2.5,
-                ),
-                carcass: (
-                    creature_type: "HerbivoreCarcass"
-                ),
-            ),
-        ),
-    ],
+(
+    name: "Herbivore",
+    gltf: Some("assets/slime.glb"),
+    creature_tag: true,
+    movement: Some((
+        velocity: (0.0, 0.0, 0.0),
+        max_movement_speed: 1.75,
+    )),
+    wander: Some((
+        angle: 0.0,
+        radius: 1.0,
+    )),
+    collider: Some((
+        radius: 0.45,
+    )),
+    combat: Some((
+        health: Some((
+            max_health: 100.0,
+            value: 100.0,
+        )),
+        speed: Some((
+            attacks_per_second: 1.0,
+        )),
+        damage: Some((
+            damage: 20.0,
+        )),
+        faction: Some("Herbivores"),
+    )),
+    digestion: Some((
+        fullness: Some((
+            value: 100.0,
+            max: 100.0,
+        )),
+        digestion: Some((
+            nutrition_burn_rate: 1.0,
+        )),
+        nutrition: None,
+    )),
+    intelligence_tag: true,
+    perception: Some((
+        range: 2.5,
+    )),
+    ricochet_tag: false,
+    avoid_obstacles_tag: true,
+    carcass: Some((
+        creature_type: "HerbivoreCarcass",
+    )),
+    despawn_when_out_of_bounds_tag: false,
+    topplegrass_tag: false,
+    falling_tag: false,
 )

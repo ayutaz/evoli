@@ -1,26 +1,13 @@
 [package]
 name = "evolution-island"
-version = "0.2.0"
-authors = []
-edition = "2018"
+version = "0.3.0"
+edition = "2021"
 
 [dependencies]
-rand = "0.7.3"
-log = "0.4"
-smart-default = "0.7"
-serde = "1.0"
-thread_profiler = "0.3.0"
-
-# TODO: find a way to update the features based on which platform is targeted
-# MacOS needs the metal feature while other platforms use vulkan.
-[dependencies.amethyst]
-version = "0.15.3"
-features = ["metal", "gltf"]
+bevy = "0.15"
+rand = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+ron = "0.8"
 
 [features]
-profiler = [
-    "thread_profiler/thread_profiler",
-    "amethyst/profiler"
-]
-
-
+profiler = []

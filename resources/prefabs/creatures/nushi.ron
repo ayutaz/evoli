@@ -1,19 +1,21 @@
-
-#![enable(implicit_some)]
-Prefab (
-    entities: [
-        (
-            data: (
-                name: (
-                    name: "Nushi"
-                ),
-                gltf: File("assets/nushi.gltf", ()),
-                movement: (
-                    velocity: [10.0, 10.0, 10.0],
-                    max_movement_speed: 2.0,
-                ),
-                ricochet_tag : (),
-            ),
-        ),
-    ],
+(
+    name: "Nushi",
+    gltf: Some("assets/nushi.gltf"),
+    creature_tag: false,
+    movement: Some((
+        velocity: (10.0, 10.0, 10.0),
+        max_movement_speed: 2.0,
+    )),
+    wander: None,
+    collider: None,
+    combat: None,
+    digestion: None,
+    intelligence_tag: false,
+    perception: None,
+    ricochet_tag: true,
+    avoid_obstacles_tag: false,
+    carcass: None,
+    despawn_when_out_of_bounds_tag: false,
+    topplegrass_tag: false,
+    falling_tag: false,
 )

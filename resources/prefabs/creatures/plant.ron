@@ -1,38 +1,39 @@
-#![enable(implicit_some)]
-Prefab (
-    entities: [
-        (
-            data: (
-                name: (
-                    name: "Plant"
-                ),
-                creature_tag: (),
-                gltf: File("assets/bush.glb", ()),
-                digestion: (
-                    digestion: (
-                        nutrition_burn_rate: 1.0,
-                    ),
-                    fullness: (
-                        max: 100.0,
-                        value: 100.0,
-                    ),
-                    nutrition: (
-                        value: 20.0,
-                    ),
-                ),
-                collider: (
-                    radius: 0.8,
-                ),
-                combat: (
-                    health: (
-                        max_health: 20.0,
-                        value: 20.0,
-                    ),
-                    has_faction: (
-                        faction: "Plants",
-                    ),
-                ),
-            ),
-        ),
-    ],
+(
+    name: "Plant",
+    gltf: Some("assets/bush.glb"),
+    creature_tag: true,
+    movement: None,
+    wander: None,
+    collider: Some((
+        radius: 0.8,
+    )),
+    combat: Some((
+        health: Some((
+            max_health: 20.0,
+            value: 20.0,
+        )),
+        speed: None,
+        damage: None,
+        faction: Some("Plants"),
+    )),
+    digestion: Some((
+        fullness: Some((
+            value: 100.0,
+            max: 100.0,
+        )),
+        digestion: Some((
+            nutrition_burn_rate: 1.0,
+        )),
+        nutrition: Some((
+            value: 20.0,
+        )),
+    )),
+    intelligence_tag: false,
+    perception: None,
+    ricochet_tag: false,
+    avoid_obstacles_tag: false,
+    carcass: None,
+    despawn_when_out_of_bounds_tag: false,
+    topplegrass_tag: false,
+    falling_tag: false,
 )

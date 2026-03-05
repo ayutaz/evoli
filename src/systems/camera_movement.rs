@@ -1,46 +1,40 @@
-use amethyst::{
-    core::{Named, Time, Transform},
-    ecs::*,
-    input::{InputHandler, StringBindings},
-    renderer::camera::Camera,
-};
+use bevy::prelude::*;
 
-#[derive(Default)]
-pub struct CameraMovementSystem {}
+/// Camera movement system that uses arrow keys to move the camera,
+/// matching the original Amethyst key bindings from input.ron:
+///   - Arrow Up/Down/Left/Right for panning
+///   - LShift + Arrow Up/Down for forward/backward (zoom via Z-axis)
+pub fn camera_movement_system(
+    time: Res<Time>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut query: Query<&mut Transform, With<Camera>>,
+) {
+    let delta_time = time.delta_secs();
+    let move_factor = 12.0 * delta_time;
 
-impl<'s> System<'s> for CameraMovementSystem {
-    type SystemData = (
-        ReadStorage<'s, Camera>,
-        ReadStorage<'s, Named>,
-        WriteStorage<'s, Transform>,
-        Read<'s, InputHandler<StringBindings>>,
-        Read<'s, Time>,
-    );
+    for mut transform in &mut query {
+        // Pan up/down (Y axis) — Arrow Up/Down without Shift
+        if keyboard.pressed(KeyCode::ArrowUp) && !keyboard.pressed(KeyCode::ShiftLeft) {
+            transform.translation.y += move_factor;
+        }
+        if keyboard.pressed(KeyCode::ArrowDown) && !keyboard.pressed(KeyCode::ShiftLeft) {
+            transform.translation.y -= move_factor;
+        }
 
-    fn run(&mut self, (cameras, names, mut transforms, input_handler, time): Self::SystemData) {
-        let delta_time = time.delta_real_seconds();
-        let move_factor = 12.0 * delta_time;
-        for (_, name, transform) in (&cameras, &names, &mut transforms).join() {
-            if name.name == "Main camera" {
-                if input_handler.action_is_down("CameraMoveUp").unwrap() {
-                    transform.move_up(move_factor);
-                }
-                if input_handler.action_is_down("CameraMoveDown").unwrap() {
-                    transform.move_down(move_factor);
-                }
-                if input_handler.action_is_down("CameraMoveLeft").unwrap() {
-                    transform.move_left(move_factor);
-                }
-                if input_handler.action_is_down("CameraMoveRight").unwrap() {
-                    transform.move_right(move_factor);
-                }
-                if input_handler.action_is_down("CameraMoveForward").unwrap() {
-                    transform.move_forward(move_factor);
-                }
-                if input_handler.action_is_down("CameraMoveBackward").unwrap() {
-                    transform.move_backward(move_factor);
-                }
-            }
+        // Pan left/right (X axis) — Arrow Left/Right
+        if keyboard.pressed(KeyCode::ArrowLeft) {
+            transform.translation.x -= move_factor;
+        }
+        if keyboard.pressed(KeyCode::ArrowRight) {
+            transform.translation.x += move_factor;
+        }
+
+        // Move forward/backward (Z axis) — LShift + Arrow Up/Down
+        if keyboard.pressed(KeyCode::ShiftLeft) && keyboard.pressed(KeyCode::ArrowUp) {
+            transform.translation.z -= move_factor;
+        }
+        if keyboard.pressed(KeyCode::ShiftLeft) && keyboard.pressed(KeyCode::ArrowDown) {
+            transform.translation.z += move_factor;
         }
     }
 }

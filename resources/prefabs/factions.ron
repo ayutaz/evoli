@@ -1,35 +1,11 @@
-#![enable(implicit_some)]
-Prefab (
-    entities: [
-        PrefabEntity(
-            data: (
-                name: (
-                    name: "Plants"
-                ),
-                faction_preys: (
-                    preys: [],
-                ),
-            ),
-        ),
-        PrefabEntity(
-            data: (
-                name: (
-                    name: "Herbivores"
-                ),
-                faction_preys: (
-                    preys: ["Plants"],
-                ),
-            ),
-        ),
-        PrefabEntity(
-            data: (
-                name: (
-                    name: "Carnivores"
-                ),
-                faction_preys: (
-                    preys: ["Herbivores"],
-                ),
-            ),
-        ),
-    ],
-)
+{
+    "Plants": (
+        prey: [],
+    ),
+    "Herbivores": (
+        prey: ["Plants"],
+    ),
+    "Carnivores": (
+        prey: ["Herbivores"],
+    ),
+}

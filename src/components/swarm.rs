@@ -1,22 +1,14 @@
-use amethyst::ecs::{Component, DenseVecStorage, Entity};
+use bevy::prelude::*;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Component)]
 pub struct SwarmCenter {
     pub entities: Vec<Entity>,
 }
 
-impl Component for SwarmCenter {
-    type Storage = DenseVecStorage<Self>;
-}
-
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Component)]
 pub struct SwarmBehavior {
     pub swarm_center: Option<Entity>,
 
     pub attraction: f32,
     pub deviation: f32,
-}
-
-impl Component for SwarmBehavior {
-    type Storage = DenseVecStorage<Self>;
 }

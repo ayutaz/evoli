@@ -1,54 +1,49 @@
-#![enable(implicit_some)]
-Prefab (
-    entities: [
-        (
-            data: (
-                name: (
-                    name: "Carnivore"
-                ),
-                creature_tag: (),
-                gltf: File("assets/devil_slime.glb", ()),
-                movement: (
-                    velocity: [0.0, 0.0, 0.0],
-                    max_movement_speed: 2.0,
-                ),
-                wander: (
-                    angle: 0.0,
-                    radius: 2.0,
-                ),
-                collider: (
-                    radius: 0.45,
-                ),
-                digestion: (
-                    digestion: (
-                        nutrition_burn_rate: 3.0,
-                    ),
-                    fullness: (
-                        max: 100.0,
-                        value: 100.0,
-                    ),
-                ),
-                combat: (
-                    health: (
-                        max_health: 100.0,
-                        value: 100.0,
-                    ),
-                    speed: (
-                        attacks_per_second: 1.0,
-                    ),
-                    damage: (
-                        damage: 20.0,
-                    ),
-                    has_faction: (
-                        faction: "Carnivores",
-                    ),
-                ),
-                intelligence_tag: (),
-                avoid_obstacles_tag: (),
-                perception: (
-                    range: 3.0,
-                ),
-            ),
-        ),
-    ],
+(
+    name: "Carnivore",
+    gltf: Some("assets/devil_slime.glb"),
+    creature_tag: true,
+    movement: Some((
+        velocity: (0.0, 0.0, 0.0),
+        max_movement_speed: 2.0,
+    )),
+    wander: Some((
+        angle: 0.0,
+        radius: 2.0,
+    )),
+    collider: Some((
+        radius: 0.45,
+    )),
+    combat: Some((
+        health: Some((
+            max_health: 100.0,
+            value: 100.0,
+        )),
+        speed: Some((
+            attacks_per_second: 1.0,
+        )),
+        damage: Some((
+            damage: 20.0,
+        )),
+        faction: Some("Carnivores"),
+    )),
+    digestion: Some((
+        fullness: Some((
+            value: 100.0,
+            max: 100.0,
+        )),
+        digestion: Some((
+            nutrition_burn_rate: 3.0,
+        )),
+        nutrition: None,
+    )),
+    intelligence_tag: true,
+    perception: Some((
+        range: 3.0,
+    )),
+    ricochet_tag: false,
+    avoid_obstacles_tag: true,
+    carcass: None,
+    despawn_when_out_of_bounds_tag: false,
+    topplegrass_tag: false,
+    falling_tag: false,
 )
