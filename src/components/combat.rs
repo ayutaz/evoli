@@ -63,5 +63,5 @@ pub struct CombatData {
     pub health: Option<Health>,
     pub speed: Option<Speed>,
     pub damage: Option<Damage>,
-    pub faction: Option<HasFactionData>,
+    pub faction: Option<String>,
 }

@@ -139,8 +139,8 @@ pub fn creature_spawner_system(
                     entity_commands.insert(damage.clone());
                 }
                 // Resolve faction: String -> Entity
-                if let Some(ref has_faction_data) = combat_data.faction {
-                    if let Some(&faction_entity) = factions.0.get(&has_faction_data.0) {
+                if let Some(ref faction_name) = combat_data.faction {
+                    if let Some(&faction_entity) = factions.0.get(faction_name) {
                         entity_commands.insert(HasFaction(faction_entity));
                     }
                 }
@@ -148,7 +148,8 @@ pub fn creature_spawner_system(
 
             // Load glTF scene
             if let Some(ref gltf_path) = def.gltf {
-                entity_commands.insert(SceneRoot(asset_server.load(gltf_path.clone())));
+                let scene_path = format!("{}#Scene0", gltf_path);
+                entity_commands.insert(SceneRoot(asset_server.load(scene_path)));
             }
 
             // Insert a Name component if provided

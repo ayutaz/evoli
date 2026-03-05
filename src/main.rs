@@ -28,14 +28,20 @@ pub enum GamePlayState {
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Evoli".to_string(),
-                resolution: (1024.0, 768.0).into(),
+        .add_plugins(DefaultPlugins
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "Evoli".to_string(),
+                    resolution: (1024.0, 768.0).into(),
+                    ..default()
+                }),
                 ..default()
-            }),
-            ..default()
-        }))
+            })
+            .set(AssetPlugin {
+                file_path: "resources".to_string(),
+                ..default()
+            })
+        )
         // States
         .init_state::<AppState>()
         .add_sub_state::<GamePlayState>()
