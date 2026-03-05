@@ -1,45 +1,44 @@
-⚠️ **Note:** Evoli is no longer actively maintained. For a more up to date example game see one of the more [recently updated showcase games](https://github.com/search?q=topic%3Ashowcase+org%3Aamethyst&type=Repositories).
+**注意:** Evoliは現在、積極的にメンテナンスされていません。より最新のサンプルゲームについては、[最近更新されたショーケースゲーム](https://github.com/search?q=topic%3Ashowcase+org%3Aamethyst&type=Repositories)のいずれかをご覧ください。
 
 # Evoli
-A micro-ecosystem simulation game, progressively designed and developed as an official showcase project for the Amethyst engine. The current iteration of the game (v0.2 and onwards) simulates a few different species occupying the same, limited space.
+Amethystエンジンの公式ショーケースプロジェクトとして、段階的に設計・開発されたマイクロ生態系シミュレーションゲームです。現在のバージョン（v0.2以降）では、限られた同じ空間に生息する数種類の生物をシミュレートしています。
 
-For more information about the current game design and our goals and history so far, read [our introduction](https://community.amethyst.rs/t/evoli-introduction/770).
+現在のゲームデザインや、これまでの目標と経緯の詳細については、[紹介記事](https://community.amethyst.rs/t/evoli-introduction/770)をお読みください。
 
-## Media
+## メディア
 
-![may-10](https://raw.githubusercontent.com/amethyst/evoli/master/evoli-shot.png) 
+![may-10](https://raw.githubusercontent.com/amethyst/evoli/master/evoli-shot.png)
 
-## Install / Play
+## インストール / プレイ
 
-Make sure you have [Git LFS](https://git-lfs.github.com/) installed when cloning the repository as most assets are stored there.
+リポジトリをクローンする際は、ほとんどのアセットがそこに保存されているため、[Git LFS](https://git-lfs.github.com/)がインストールされていることを確認してください。
 
-If you are compiling on Linux, you need to install some dependencies first. They are necessary to compile and run the Amethyst engine. Please follow the instructions in the [Amethyst README](https://github.com/amethyst/amethyst#dependencies).
+Linuxでコンパイルする場合は、まずいくつかの依存関係をインストールする必要があります。これらはAmethystエンジンのコンパイルと実行に必要です。[Amethyst README](https://github.com/amethyst/amethyst#dependencies)の手順に従ってください。
 
-Ensure you have Cargo installed ([use rustup if you don't](https://rustup.rs/)), and run the following:
+Cargoがインストールされていることを確認し（インストールされていない場合は[rustup](https://rustup.rs/)を使用してください）、以下を実行してください：
 
 ```
 cargo run
 ```
 
-If you run into issues please report them here or on http://discord.gg/amethyst in the #showcase-game channel.
+問題が発生した場合は、こちらか http://discord.gg/amethyst の#showcase-gameチャンネルで報告してください。
 
-## Profiling
-We use the same profiling library Amethyst uses. Run the game with
+## プロファイリング
+Amethystが使用しているのと同じプロファイリングライブラリを使用しています。以下のコマンドでゲームを実行してください：
 ```
 cargo run --release --features profiler
 ```
-then exit the game without a crash to generate a file `thread_profile.json`.
-See the Amethyst instructions [Profiling the engine](https://github.com/amethyst/amethyst/blob/master/docs/CONTRIBUTING.md#profiling-the-engine) on
-how to use that file.
+その後、クラッシュせずにゲームを終了すると、`thread_profile.json`というファイルが生成されます。
+そのファイルの使い方については、Amethystの[エンジンのプロファイリング](https://github.com/amethyst/amethyst/blob/master/docs/CONTRIBUTING.md#profiling-the-engine)の手順を参照してください。
 
-Search the code for `profile_scope` for an example on how to add profiling markers to the code.
+コードにプロファイリングマーカーを追加する方法の例については、コード内で`profile_scope`を検索してください。
 
-## Get involved
+## 参加するには
 
-- [Sitemap doc](https://community.amethyst.rs/t/evoli-sitemap/771) - All essential reading and communication tools.
-- [Development conventions](https://community.amethyst.rs/t/evoli-development-conventions/783)
-- [Contribution doc](https://community.amethyst.rs/t/evoli-is-ready-for-contributions/815)
+- [サイトマップドキュメント](https://community.amethyst.rs/t/evoli-sitemap/771) - 必読資料とコミュニケーションツールの一覧。
+- [開発規約](https://community.amethyst.rs/t/evoli-development-conventions/783)
+- [コントリビューションドキュメント](https://community.amethyst.rs/t/evoli-is-ready-for-contributions/815)
 
-## License
+## ライセンス
 
-Split license: Choose between [Apache or MIT license](https://github.com/amethyst/evoli/blob/master/LICENSE.md).
+デュアルライセンス：[ApacheライセンスまたはMITライセンス](https://github.com/amethyst/evoli/blob/master/LICENSE.md)から選択できます。
