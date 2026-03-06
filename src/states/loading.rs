@@ -2,12 +2,11 @@ use bevy::prelude::*;
 use std::collections::HashMap;
 
 use crate::AppState;
-use crate::components::combat::{FactionPrey, HasFactionData};
 use crate::components::creatures::CreatureDefinition;
 use crate::resources::world_bounds::WorldBounds;
 use crate::resources::debug::DebugConfig;
 use crate::resources::experimental::wind::Wind;
-use crate::resources::prefabs::{CreaturePrefabs, Factions};
+use crate::resources::prefabs::CreaturePrefabs;
 
 pub struct LoadingPlugin;
 
@@ -33,14 +32,9 @@ fn setup_loading(mut commands: Commands) {
 }
 
 fn check_loading(
-    mut commands: Commands,
     mut next_state: ResMut<NextState<AppState>>,
-    prefabs: Res<CreaturePrefabs>,
 ) {
-    // Set up factions from prefab data
-    let factions = setup_factions(&prefabs);
-    commands.insert_resource(factions);
-
+    // Faction entities are created in main_game::setup_faction_entities
     next_state.set(AppState::Menu);
 }
 
@@ -104,40 +98,3 @@ fn load_creature_prefabs() -> CreaturePrefabs {
     CreaturePrefabs { prefabs }
 }
 
-/// Faction definition for RON deserialization.
-#[derive(serde::Deserialize)]
-struct FactionDef {
-    prey: Vec<String>,
-}
-
-/// Create faction entities and resolve prey relationships.
-fn setup_factions(prefabs: &CreaturePrefabs) -> Factions {
-    // Load faction definitions from RON
-    let faction_defs: HashMap<String, FactionDef> = match std::fs::read_to_string("resources/prefabs/factions.ron") {
-        Ok(contents) => {
-            match ron::de::from_str(&contents) {
-                Ok(defs) => defs,
-                Err(e) => {
-                    warn!("Failed to parse factions.ron: {:?}. Using empty factions.", e);
-                    HashMap::new()
-                }
-            }
-        }
-        Err(e) => {
-            warn!("Failed to read factions.ron: {:?}. Using empty factions.", e);
-            HashMap::new()
-        }
-    };
-
-    // For now, just store faction names -> placeholder entities
-    // The actual Entity references will be created when we have a World
-    let mut factions_map = HashMap::new();
-    for name in faction_defs.keys() {
-        // We use Entity::PLACEHOLDER as a temporary value
-        // In a full implementation, faction entities would be spawned with FactionPrey components
-        factions_map.insert(name.clone(), Entity::PLACEHOLDER);
-    }
-
-    info!("Loaded {} factions: {:?}", factions_map.len(), factions_map.keys().collect::<Vec<_>>());
-    Factions(factions_map)
-}

@@ -79,28 +79,3 @@ pub fn enforce_bounds_system(
         }
     }
 }
-
-/// Debug system that logs collision events to the console.
-pub fn debug_collision_event_system(
-    mut collision_events: EventReader<CollisionEvent>,
-) {
-    for event in collision_events.read() {
-        info!("Received collision event {:?}", event);
-    }
-}
-
-/// Debug system that draws collider circles using Gizmos.
-pub fn debug_collider_system(
-    query: Query<(&collider::Circle, &GlobalTransform)>,
-    mut gizmos: Gizmos,
-) {
-    for (circle, global_transform) in &query {
-        let mut position = global_transform.translation();
-        position.z += 1.0;
-        gizmos.circle_2d(
-            Isometry2d::from_translation(position.truncate()),
-            circle.radius,
-            Color::srgba(1.0, 0.5, 0.5, 1.0),
-        );
-    }
-}

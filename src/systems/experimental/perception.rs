@@ -54,22 +54,3 @@ pub fn entity_detection_system(
         }
     }
 }
-
-/// Debug system that draws gizmo lines between entities and their detected neighbors.
-pub fn debug_entity_detection_system(
-    query: Query<(&DetectedEntities, &Transform)>,
-    all_transforms: Query<&Transform>,
-    mut gizmos: Gizmos,
-) {
-    for (detected, transform) in &query {
-        let mut pos = transform.translation;
-        pos.z += 0.3;
-        for &other_entity in &detected.entities {
-            if let Ok(other_transform) = all_transforms.get(other_entity) {
-                let mut other_pos = other_transform.translation;
-                other_pos.z += 0.3;
-                gizmos.line(pos, other_pos, Color::srgba(1.0, 1.0, 0.0, 1.0));
-            }
-        }
-    }
-}

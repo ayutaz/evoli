@@ -47,14 +47,6 @@ impl FactionPrey {
     }
 }
 
-/// Intermediate type for RON deserialization of HasFaction (faction name as string).
-#[derive(Deserialize, Serialize, Default, Clone, Debug)]
-pub struct HasFactionData(pub String);
-
-/// Intermediate type for RON deserialization of FactionPrey (faction names as strings).
-#[derive(Deserialize, Serialize, Default, Clone, Debug)]
-pub struct FactionPreyData(pub Vec<String>);
-
 /// Combat-related data for creature definitions (used in RON deserialization).
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]

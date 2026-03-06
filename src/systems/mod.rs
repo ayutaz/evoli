@@ -5,7 +5,6 @@ pub mod combat;
 pub mod death;
 pub mod debug;
 pub mod digestion;
-pub mod health;
 pub mod main_game_ui;
 pub mod movement;
 pub mod spawner;
