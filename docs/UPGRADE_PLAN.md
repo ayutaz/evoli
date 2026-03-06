@@ -62,37 +62,43 @@ Amethyst 0.15 エコシステム内で可能な限りの依存関係アップデ
 
 ---
 
-## フェーズA: Bevy 0.18 へ全面移行
+## フェーズA: Bevy へ全面移行
 
 ### 目標
-Amethyst を完全に廃止し、Bevy 0.18 へ移行する。
+Amethyst を完全に廃止し、Bevy へ移行する。
 
-### ステータス: 計画策定完了 → 実装待ち
+### ステータス: 完了（2026-03-05）
+
+> **計画との差分:**
+> - Bevy **0.15** を使用（計画時点では 0.18 を想定していたが、移行開始時の安定版 0.15 を採用）
+> - Edition **2021** を使用（2024 ではなく）
+> - Rust stable **1.82.0+**（1.93+ ではなく、Bevy 0.15 の MSRV に準拠）
+> - `bevy_common_assets` は不使用（`ron` クレートで直接デシリアライズ）
+> - `rand` は **0.8** を使用（0.9 ではなく）
+> - オーディオ（A-9）は**未実装**（BgmHandle は削除済み、将来対応）
 
 ---
 
 ### A-1. 基盤構築（Cargo.toml / main.rs）
 
 **作業内容:**
-- [ ] Rust を最新 stable (1.93+) にアップグレード、Edition 2024 に変更
-- [ ] Cargo.toml: amethyst を削除、bevy 0.18 を追加
-- [ ] 追加クレート: `bevy_common_assets` (RONアセット), `ron` (デシリアライズ)
-- [ ] main.rs: `App::new().add_plugins(DefaultPlugins)` ベースに書き直し
-- [ ] AppState enum 定義: Loading / Menu / InGame
-- [ ] GamePlayState SubStates: Running / Paused
+- [x] Rust を stable (1.82.0+) にアップグレード、Edition 2021 に変更
+- [x] Cargo.toml: amethyst を削除、bevy 0.15 を追加
+- [x] 追加クレート: `ron` (デシリアライズ) ※ `bevy_common_assets` は不使用
+- [x] main.rs: `App::new().add_plugins(DefaultPlugins)` ベースに書き直し
+- [x] AppState enum 定義: Loading / Menu / InGame
+- [x] GamePlayState SubStates: Running / Paused
 
-**Bevy Cargo.toml 設定:**
+**実際の Cargo.toml 設定:**
 ```toml
 [package]
 name = "evolution-island"
 version = "0.3.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
-bevy = { version = "0.18", features = ["3d"] }
-bevy_common_assets = { version = "0.x", features = ["ron"] }
-rand = "0.9"
-log = "0.4"
+bevy = "0.15"
+rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 ron = "0.8"
 ```
@@ -110,12 +116,12 @@ ron = "0.8"
 | `#[derive(PrefabData)] #[prefab(Component)]` | 削除（`#[derive(Component, Deserialize)]` のみ） |
 
 **作業内容:**
-- [ ] タグコンポーネント 7個を `#[derive(Component)]` に変換
-- [ ] データコンポーネント 17個を `#[derive(Component)]` に変換
-- [ ] `PrefabData` / `#[prefab(Component)]` をすべて削除
-- [ ] `CreaturePrefabData` → `CreatureDefinition` (Deserialize + Asset + TypePath)
-- [ ] `CombatPrefabData` / `DigestionPrefabData` → serde のみ
-- [ ] `HasFaction<String>` / `FactionPrey<String>` のカスタム PrefabData 実装を削除
+- [x] タグコンポーネント 7個を `#[derive(Component)]` に変換
+- [x] データコンポーネント 17個を `#[derive(Component)]` に変換
+- [x] `PrefabData` / `#[prefab(Component)]` をすべて削除
+- [x] `CreaturePrefabData` → `CreatureDefinition` (Deserialize のみ、serde で直接デシリアライズ)
+- [x] `CombatPrefabData` / `DigestionPrefabData` → serde のみ
+- [x] `HasFaction<String>` / `FactionPrey<String>` → `HasFaction(Entity)` / `FactionPrey(Vec<Entity>)` タプル構造体に変換
 
 ---
 
@@ -129,10 +135,10 @@ ron = "0.8"
 | `Write<'s, T>` / `ReadExpect` / `WriteExpect` | `ResMut<T>` |
 
 **作業内容:**
-- [ ] WorldBounds, DebugConfig, Wind, Factions → `#[derive(Resource)]`
-- [ ] SpatialGrid → `#[derive(Resource)]` (`src/utils/spatial_hash.rs` のロジックはそのまま流用)
-- [ ] CreaturePrefabs → `#[derive(Resource)]` + `HashMap<String, Handle<CreatureDefinition>>`
-- [ ] UiPrefabRegistry → 廃止（コードベースUIに移行）
+- [x] WorldBounds, DebugConfig, Wind, Factions → `#[derive(Resource)]`
+- [x] SpatialGrid → `#[derive(Resource)]` (`src/utils/spatial_hash.rs` のロジックはそのまま流用)
+- [x] CreaturePrefabs → `#[derive(Resource)]` + `HashMap<String, CreatureDefinition>`（Handle不使用、直接保持）
+- [x] UiPrefabRegistry → 廃止（コードベースUIに移行）
 
 ---
 
@@ -143,25 +149,25 @@ ron = "0.8"
 RON → PrefabLoaderSystemDesc → PrefabData derive → 自動コンポーネント挿入
 ```
 
-**Bevy移行後:**
+**Bevy移行後（実際）:**
 ```
-RON → bevy_common_assets RonAssetPlugin → CreatureDefinition Asset → 手動 Commands::spawn()
+RON → ron::from_str → CreatureDefinition → CreaturePrefabs Resource → 手動 Commands::spawn()
 ```
 
 **作業内容:**
-- [ ] `CreatureDefinition` Asset型を定義（現行RON構造を維持）
-- [ ] `RonAssetPlugin::<CreatureDefinition>::new(&["creature.ron"])` を登録
-- [ ] スポーンヘルパー関数: `spawn_creature(commands, definition, asset_server)` を作成
-- [ ] glTF読み込み: `AssetServer::load("path.glb")` → `SceneRoot(handle)`
-- [ ] Faction初期化: RONから読み込み → `Factions` Resourceにマッピング
-- [ ] `HasFaction<String>` → `HasFaction<Entity>` 変換をスポーン時に実行
-- [ ] UI Prefab (5ファイル) → 廃止（A-7でコードベースUIに移行）
+- [x] `CreatureDefinition` serde型を定義（RON構造をフラット化して維持）
+- [x] `ron` クレートで直接デシリアライズ（`bevy_common_assets` / `RonAssetPlugin` は不使用）
+- [x] スポーンヘルパー: `spawn_creature()` で `CreatureDefinition` からコンポーネントを手動挿入
+- [x] glTF読み込み: `AssetServer::load("path.glb")` → `SceneRoot(handle)`
+- [x] Faction初期化: RONから読み込み → `Factions` Resourceにマッピング
+- [x] `HasFaction(Entity)` / `FactionPrey(Vec<Entity>)` をスポーン時に設定
+- [x] UI Prefab (5ファイル) → 廃止（A-7でコードベースUIに移行）
 
-**RONファイルの扱い:**
-- `resources/prefabs/creatures/*.ron` → 構造を維持しつつ `AssetPrefab<GltfSceneAsset>` 部分を修正
-- `resources/prefabs/factions.ron` → カスタムアセットとしてロード
+**RONファイルの扱い（実績）:**
+- `resources/prefabs/creatures/*.ron` → フラット構造に簡略化（PrefabData/GltfSceneAsset 部分を削除）
+- `resources/prefabs/factions.ron` → `ron::from_str` で直接ロード
 - `resources/prefabs/ui/*.ron` → 廃止
-- `resources/wind.ron` → カスタムアセットまたは直接ロード
+- `resources/wind.ron` → `ron::from_str` で直接ロード
 
 ---
 
@@ -201,18 +207,18 @@ enum UiSet { GameUi }
 ```
 
 **作業内容（優先順位付き）:**
-1. [ ] コアシステム: movement, collision, enforce_bounds
-2. [ ] 知覚: spatial_grid, entity_detection
-3. [ ] 意思決定: query_predators_and_prey, closest, seek
-4. [ ] 行動: wander, ricochet, obstacle
-5. [ ] 代謝: digestion, starvation
-6. [ ] 戦闘: cooldown, find_attack, perform_attack
-7. [ ] 死亡: death_by_health, carcass
-8. [ ] スポーン: debug_spawn_trigger, swarm_spawn, topplegrass_spawn, creature_spawner
-9. [ ] 実験的: toppling, gravity, out_of_bounds, wind_control, swarm_behavior, swarm_center
-10. [ ] カメラ: camera_movement
-11. [ ] デバッグ（7個）: DebugLinesComponent → Gizmos
-12. [ ] UI: main_game_ui
+1. [x] コアシステム: movement, collision, enforce_bounds
+2. [x] 知覚: spatial_grid, entity_detection
+3. [x] 意思決定: query_predators_and_prey, closest, seek
+4. [x] 行動: wander, ricochet, obstacle
+5. [x] 代謝: digestion, starvation
+6. [x] 戦闘: cooldown, find_attack, perform_attack
+7. [x] 死亡: death_by_health, carcass
+8. [x] スポーン: debug_spawn_trigger, swarm_spawn, topplegrass_spawn, creature_spawner
+9. [x] 実験的: toppling, gravity, out_of_bounds, wind_control, swarm_behavior, swarm_center
+10. [x] カメラ: camera_movement
+11. [x] デバッグ（7個）: DebugLinesComponent → Gizmos
+12. [x] UI: main_game_ui
 
 **イベント移行:**
 | イベント | Amethyst | Bevy 0.18 |
@@ -251,13 +257,13 @@ enum GamePlayState {
 ```
 
 **作業内容:**
-- [ ] AppState / GamePlayState enum 定義
-- [ ] LoadingState: `OnEnter` でアセットロード開始、`Update` + `run_if` でプログレス監視、完了時 `NextState::set`
-- [ ] MenuState: `OnEnter` でUI構築、ボタンクリックで遷移
-- [ ] MainGameState: `OnEnter` でエンティティ生成（カメラ、ライト、初期生物）、`OnExit` でクリーンアップ
-- [ ] PauseMenu: `GamePlayState::Paused` + SubStates で実装
-- [ ] ゲームシステムは `.run_if(in_state(GamePlayState::Running))` で条件付き実行
-- [ ] `DespawnOnExitState` でステート離脱時の自動エンティティ削除
+- [x] AppState / GamePlayState enum 定義
+- [x] LoadingState: `OnEnter` でアセットロード開始、`Update` + `run_if` でプログレス監視、完了時 `NextState::set`
+- [x] MenuState: `OnEnter` でUI構築、ボタンクリックで遷移
+- [x] MainGameState: `OnEnter` でエンティティ生成（カメラ、ライト、初期生物）、`OnExit` でクリーンアップ
+- [x] PauseMenu: `GamePlayState::Paused` + SubStates で実装
+- [x] ゲームシステムは `.run_if(in_state(GamePlayState::Running))` で条件付き実行
+- [x] `StateScoped` でステート離脱時の自動エンティティ削除
 
 ---
 
@@ -265,32 +271,34 @@ enum GamePlayState {
 
 **Amethystの5つのUI RON → Bevyコードに変換:**
 
-- [ ] メニューUI: タイトル + Play/Quit ボタン
-- [ ] ゲーム内UI: Pause/Speed Up/Slow Down/Menu ボタン
-- [ ] ポーズメニューUI: Resume/Quit ボタン
-- [ ] マーカーコンポーネントでボタン特定 (`PlayButton`, `PauseButton` 等)
-- [ ] `Interaction` + `Changed` フィルタでクリック検出
+- [x] メニューUI: タイトル + Play/Quit ボタン
+- [x] ゲーム内UI: Pause/Speed Up/Slow Down/Menu ボタン
+- [x] ポーズメニューUI: Resume/Quit ボタン
+- [x] マーカーコンポーネントでボタン特定 (`PlayButton`, `PauseButton` 等)
+- [x] `Interaction` + `Changed` フィルタでクリック検出
 
 ---
 
 ### A-8. レンダリング・カメラ・ライト
 
 **作業内容:**
-- [ ] カメラ: `Camera3d` + `OrthographicProjection` (scaling_mode で zoom 調整)
-- [ ] ライト: `DirectionalLight` + `AmbientLight`
-- [ ] デバッグ描画: `DebugLinesComponent` → `Gizmos` (circle, line, sphere)
-- [ ] glTFシーン: `SceneRoot(asset_server.load("path.glb"))`
+- [x] カメラ: `Camera3d` + `OrthographicProjection` (scaling_mode で zoom 調整)
+- [x] ライト: `DirectionalLight` + `AmbientLight`
+- [x] デバッグ描画: `DebugLinesComponent` → `Gizmos` (circle, line, sphere)
+- [x] glTFシーン: `SceneRoot(asset_server.load("path.glb"))`
 
 ---
 
-### A-9. オーディオ
+### A-9. オーディオ（未実装）
 
 - [ ] BGM: `AudioPlayer::new(asset_server.load("ambient.ogg"))` + `PlaybackSettings::LOOP`
 - [ ] macOS互換性: Bevy はwgpu/cpal経由なので CoreAudio問題が解消される可能性あり
 
+> **注記:** オーディオは移行時に未実装のまま。Amethyst時代の `BgmHandle` は削除済み。`resources/assets/ambient.ogg` は残存しており、将来的に Bevy のオーディオ API で実装可能。
+
 ---
 
-### A-10. Math / Transform移行
+### A-10. Math / Transform移行（完了）
 
 **nalgebra → glam 変換:**
 | nalgebra (Amethyst) | glam (Bevy) |

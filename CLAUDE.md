@@ -26,6 +26,11 @@ cargo build --release
 - macOS Apple Silicon でネイティブ動作（x86_64 クロスコンパイル不要）
 - LFS アセットが GitHub の帯域制限で取得不可の場合、`media.githubusercontent.com` 経由でダウンロード可能
 
+### Feature Flags
+
+- `profiler` - プロファイラ有効化
+- `perception_debug` - 知覚システムのデバッグ表示
+
 ## アーキテクチャ
 
 Bevy の ECS (Entity Component System) パターンに従う。
@@ -36,7 +41,7 @@ Bevy の ECS (Entity Component System) パターンに従う。
 - **`src/systems/`** - ゲームロジック。`behaviors/` にAI行動 (wander, seek, ricochet, obstacle avoidance)
 - **`src/states/`** - ゲームステートマシン: Loading → Menu → InGame ⇄ Paused
 - **`src/resources/`** - 共有リソース (WorldBounds, SpatialGrid, DebugConfig, Prefabs)
-- **`src/utils/`** - spatial_hash などのユーティリティ
+- **`src/utils/`** - spatial_hash ユーティリティ
 
 ### ステートマシン
 
