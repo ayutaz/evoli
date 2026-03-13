@@ -29,10 +29,7 @@ impl SpatialGrid {
         let x_cell = (translation.x / self.cell_size).floor() as i32;
         let y_cell = (translation.y / self.cell_size).floor() as i32;
 
-        let cell_entry = self
-            .cells
-            .entry((x_cell, y_cell))
-            .or_default();
+        let cell_entry = self.cells.entry((x_cell, y_cell)).or_default();
         cell_entry.insert(entity.index());
     }
 
