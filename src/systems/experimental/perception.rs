@@ -21,7 +21,12 @@ pub fn entity_detection_system(
     mut commands: Commands,
     grid: Res<SpatialGrid>,
     all_transforms: Query<(Entity, &Transform)>,
-    mut perception_query: Query<(Entity, &Perception, &Transform, Option<&mut DetectedEntities>)>,
+    mut perception_query: Query<(
+        Entity,
+        &Perception,
+        &Transform,
+        Option<&mut DetectedEntities>,
+    )>,
 ) {
     for (entity, perception, transform, detected_opt) in &mut perception_query {
         let pos = transform.translation;

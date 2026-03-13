@@ -3,13 +3,13 @@ use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 use std::f32::consts::PI;
 
-use crate::AppState;
-use crate::GamePlayState;
 use crate::components::combat::FactionPrey;
 use crate::components::creatures::CreatureTag;
 use crate::resources::prefabs::Factions;
 use crate::resources::world_bounds::WorldBounds;
 use crate::systems::spawner::CreatureSpawnEvent;
+use crate::AppState;
+use crate::GamePlayState;
 
 pub struct MainGamePlugin;
 
@@ -70,8 +70,7 @@ fn setup_main_game(
     info!("Starting main game");
 
     // Setup 3D orthographic camera
-    let camera_transform = Transform::from_xyz(-10.0, -10.0, 8.0)
-        .looking_at(Vec3::ZERO, Vec3::Z);
+    let camera_transform = Transform::from_xyz(-10.0, -10.0, 8.0).looking_at(Vec3::ZERO, Vec3::Z);
 
     commands.spawn((
         MainGameCamera,
@@ -135,8 +134,7 @@ fn setup_main_game(
         let y = rng.gen_range(world_bounds.bottom..world_bounds.top);
         spawn_events.send(CreatureSpawnEvent {
             creature_type: "Herbivore".to_string(),
-            transform: Transform::from_xyz(x, y, 0.02)
-                .with_scale(Vec3::splat(0.4)),
+            transform: Transform::from_xyz(x, y, 0.02).with_scale(Vec3::splat(0.4)),
         });
     }
 
@@ -146,8 +144,7 @@ fn setup_main_game(
         let y = rng.gen_range(world_bounds.bottom..world_bounds.top);
         spawn_events.send(CreatureSpawnEvent {
             creature_type: "Carnivore".to_string(),
-            transform: Transform::from_xyz(x, y, 0.02)
-                .with_scale(Vec3::splat(0.4)),
+            transform: Transform::from_xyz(x, y, 0.02).with_scale(Vec3::splat(0.4)),
         });
     }
 }
@@ -159,10 +156,11 @@ fn setup_faction_entities(commands: &mut Commands, factions: &mut Factions) {
         prey: Vec<String>,
     }
 
-    let faction_defs: HashMap<String, FactionDef> = match std::fs::read_to_string("resources/prefabs/factions.ron") {
-        Ok(contents) => ron::de::from_str(&contents).unwrap_or_default(),
-        Err(_) => HashMap::new(),
-    };
+    let faction_defs: HashMap<String, FactionDef> =
+        match std::fs::read_to_string("resources/prefabs/factions.ron") {
+            Ok(contents) => ron::de::from_str(&contents).unwrap_or_default(),
+            Err(_) => HashMap::new(),
+        };
 
     // First pass: create faction entities and store the name -> Entity mapping
     let mut name_to_entity = HashMap::new();
@@ -174,10 +172,14 @@ fn setup_faction_entities(commands: &mut Commands, factions: &mut Factions) {
     // Second pass: resolve prey references and attach FactionPrey components
     for (name, def) in &faction_defs {
         let faction_entity = name_to_entity[name];
-        let prey_entities: Vec<Entity> = def.prey.iter()
+        let prey_entities: Vec<Entity> = def
+            .prey
+            .iter()
             .filter_map(|prey_name| name_to_entity.get(prey_name).copied())
             .collect();
-        commands.entity(faction_entity).insert(FactionPrey(prey_entities));
+        commands
+            .entity(faction_entity)
+            .insert(FactionPrey(prey_entities));
     }
 
     // Update the Factions resource

@@ -81,9 +81,8 @@ pub fn perform_default_attack_system(
         // Check if attacker can attack (has Damage + Speed, no Cooldown)
         if let Ok((damage, speed)) = damage_query.get(event.attacker) {
             let damage_value = damage.damage;
-            let cooldown_duration = Duration::from_millis(
-                (1000.0 / speed.attacks_per_second) as u64,
-            );
+            let cooldown_duration =
+                Duration::from_millis((1000.0 / speed.attacks_per_second) as u64);
 
             // Apply damage to defender's health
             if let Ok(mut health) = health_query.get_mut(event.defender) {

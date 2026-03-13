@@ -7,8 +7,8 @@ pub struct MenuPlugin;
 impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(AppState::Menu), setup_menu)
-           .add_systems(Update, menu_interaction.run_if(in_state(AppState::Menu)))
-           .add_systems(OnExit(AppState::Menu), cleanup_menu);
+            .add_systems(Update, menu_interaction.run_if(in_state(AppState::Menu)))
+            .add_systems(OnExit(AppState::Menu), cleanup_menu);
     }
 }
 

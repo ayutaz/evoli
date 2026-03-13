@@ -87,11 +87,7 @@ fn gen_spawn_location(wind: &Wind, bounds: &WorldBounds) -> Vec3 {
             HEIGHT,
         )
     } else {
-        Vec3::new(
-            rng.gen_range(bounds.left..bounds.right),
-            bounds.top,
-            HEIGHT,
-        )
+        Vec3::new(rng.gen_range(bounds.left..bounds.right), bounds.top, HEIGHT)
     }
 }
 

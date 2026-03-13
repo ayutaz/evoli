@@ -7,10 +7,7 @@ use bevy::prelude::*;
 /// - `P`: toggle pause
 ///
 /// Speed is clamped between 0.25x and 4.0x.
-pub fn time_control_system(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    mut time: ResMut<Time<Virtual>>,
-) {
+pub fn time_control_system(keyboard: Res<ButtonInput<KeyCode>>, mut time: ResMut<Time<Virtual>>) {
     if keyboard.just_pressed(KeyCode::BracketRight) {
         let current = time.relative_speed();
         let new_speed = (current * 2.0).min(4.0);

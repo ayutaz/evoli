@@ -5,7 +5,11 @@ use crate::resources::world_bounds::WorldBounds;
 
 pub fn ricochet_system(
     bounds: Res<WorldBounds>,
-    mut query: Query<(&Transform, &creatures::RicochetTag, &mut creatures::Movement)>,
+    mut query: Query<(
+        &Transform,
+        &creatures::RicochetTag,
+        &mut creatures::Movement,
+    )>,
 ) {
     for (transform, _ricochet, mut movement) in query.iter_mut() {
         if transform.translation.x >= bounds.right || transform.translation.x <= bounds.left {

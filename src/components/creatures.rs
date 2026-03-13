@@ -2,9 +2,7 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::components::{
-    collider::Circle,
-    combat::CombatData,
-    digestion::DigestionData,
+    collider::Circle, combat::CombatData, digestion::DigestionData,
     experimental::perception::Perception,
 };
 

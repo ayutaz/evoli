@@ -112,9 +112,9 @@ pub fn swarm_center_system(
     swarm_behaviors: Query<&SwarmBehavior>,
 ) {
     for (entity, mut swarm_center) in &mut query {
-        swarm_center.entities.retain(|swarmling| {
-            swarm_behaviors.get(*swarmling).is_ok()
-        });
+        swarm_center
+            .entities
+            .retain(|swarmling| swarm_behaviors.get(*swarmling).is_ok());
 
         if swarm_center.entities.is_empty() {
             commands.entity(entity).despawn_recursive();
@@ -153,8 +153,7 @@ pub fn swarm_behavior_system(
                 Vec3::ZERO
             };
 
-            let mut side_direction =
-                Vec3::new(current_velocity.y, -current_velocity.x, 0.0);
+            let mut side_direction = Vec3::new(current_velocity.y, -current_velocity.x, 0.0);
             if side_direction.length_squared() >= f32::EPSILON {
                 side_direction = side_direction.normalize();
             }

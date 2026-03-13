@@ -55,8 +55,8 @@ pub fn debug_wander_system(
     }
     for (wander, transform, movement) in &query {
         let pos = transform.translation + Vec3::Z * 0.5;
-        let future_pos = pos + Vec3::new(movement.velocity.x, movement.velocity.y, 0.0) * 0.5
-            + Vec3::Z * 0.5;
+        let future_pos =
+            pos + Vec3::new(movement.velocity.x, movement.velocity.y, 0.0) * 0.5 + Vec3::Z * 0.5;
         let direction = wander.get_direction();
 
         // Line from current position to future position

@@ -76,12 +76,7 @@ pub fn setup_game_ui(mut commands: Commands) {
 ///
 /// If `mark_text` is `true` the text entity also receives `PauseButtonText` so
 /// we can find it later to toggle the label.
-fn spawn_button(
-    parent: &mut ChildBuilder,
-    label: &str,
-    marker: impl Component,
-    mark_text: bool,
-) {
+fn spawn_button(parent: &mut ChildBuilder, label: &str, marker: impl Component, mark_text: bool) {
     parent
         .spawn((
             Button,
