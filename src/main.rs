@@ -172,6 +172,7 @@ fn main() {
             Update,
             (
                 systems::camera_movement::camera_movement_system,
+                systems::camera_movement::camera_zoom_system,
                 systems::time_control::time_control_system,
             )
                 .run_if(in_state(AppState::InGame)),

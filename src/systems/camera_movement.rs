@@ -1,4 +1,24 @@
+use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
+
+/// Camera zoom system that uses mouse wheel to zoom in/out
+/// by adjusting the orthographic projection scale.
+pub fn camera_zoom_system(
+    mut scroll_events: EventReader<MouseWheel>,
+    mut query: Query<&mut Projection, With<Camera>>,
+) {
+    for event in scroll_events.read() {
+        let scroll = match event.unit {
+            MouseScrollUnit::Line => event.y * 0.1,
+            MouseScrollUnit::Pixel => event.y * 0.001,
+        };
+        for mut projection in &mut query {
+            if let Projection::Orthographic(ref mut ortho) = *projection {
+                ortho.scale = (ortho.scale * (1.0 - scroll)).clamp(0.05, 2.0);
+            }
+        }
+    }
+}
 
 /// Camera movement system that uses arrow keys to move the camera,
 /// matching the original Amethyst key bindings from input.ron:
