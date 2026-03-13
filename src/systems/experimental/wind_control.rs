@@ -61,9 +61,7 @@ fn calc_wind_angle(input_signum: Option<f32>, wind: &Wind, dt: f32) -> f32 {
 fn calc_wind_speed(input_signum: Option<f32>, wind: &Wind, dt: f32) -> f32 {
     let magnitude = wind.wind.length();
     if let Some(signum) = input_signum {
-        (magnitude + signum * WIND_ACCELERATION * dt)
-            .max(MIN_WIND_SPEED)
-            .min(MAX_WIND_SPEED)
+        (magnitude + signum * WIND_ACCELERATION * dt).clamp(MIN_WIND_SPEED, MAX_WIND_SPEED)
     } else {
         magnitude
     }

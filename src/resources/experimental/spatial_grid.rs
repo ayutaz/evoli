@@ -15,12 +15,12 @@ impl SpatialGrid {
     pub fn new(cell_size: f32) -> Self {
         SpatialGrid {
             cell_size,
-            cells: HashMap::with_hasher(SpatialBuildHasher::default()),
+            cells: HashMap::with_hasher(SpatialBuildHasher),
         }
     }
 
     pub fn reset(&mut self) {
-        self.cells = HashMap::with_hasher(SpatialBuildHasher::default());
+        self.cells = HashMap::with_hasher(SpatialBuildHasher);
     }
 
     // Insert an entity in the grid based on its Transform component.
@@ -32,7 +32,7 @@ impl SpatialGrid {
         let cell_entry = self
             .cells
             .entry((x_cell, y_cell))
-            .or_insert_with(HashSet::new);
+            .or_default();
         cell_entry.insert(entity.index());
     }
 

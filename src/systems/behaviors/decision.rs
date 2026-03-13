@@ -90,12 +90,12 @@ pub fn query_predators_and_prey_system(
         prey_queries
             .queries
             .entry(faction_entity)
-            .or_insert_with(HashSet::default)
+            .or_default()
             .clear();
         predator_queries
             .queries
             .entry(faction_entity)
-            .or_insert_with(HashSet::default)
+            .or_default()
             .clear();
     }
 

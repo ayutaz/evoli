@@ -122,6 +122,7 @@ pub fn cleanup_game_ui(mut commands: Commands, query: Query<Entity, With<GameUiR
 /// * >>     – sends `SpeedUpEvent`.
 /// * <<     – sends `SlowDownEvent`.
 /// * Menu   – sends `MenuEvent`.
+#[allow(clippy::too_many_arguments)]
 pub fn game_ui_interaction(
     pause_query: Query<&Interaction, (Changed<Interaction>, With<PauseButton>)>,
     speed_up_query: Query<&Interaction, (Changed<Interaction>, With<SpeedUpButton>)>,
@@ -172,6 +173,7 @@ pub fn game_ui_interaction(
 }
 
 /// Visual feedback – changes button colour on hover / press.
+#[allow(clippy::type_complexity)]
 pub fn button_visual_feedback(
     mut query: Query<(&Interaction, &mut BackgroundColor), (Changed<Interaction>, With<Button>)>,
 ) {

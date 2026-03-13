@@ -99,6 +99,7 @@ fn wind_towards_direction(wind: Vec2, cardinal_direction: Vec2) -> bool {
 }
 
 /// Controls the rolling animation of the Topplegrass.
+#[allow(clippy::type_complexity)]
 pub fn toppling_system(
     mut commands: Commands,
     time: Res<Time>,
